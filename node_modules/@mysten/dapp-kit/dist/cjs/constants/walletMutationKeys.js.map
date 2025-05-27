@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../src/constants/walletMutationKeys.ts"],
-  "sourcesContent": ["// Copyright (c) Mysten Labs, Inc.\n// SPDX-License-Identifier: Apache-2.0\n\nimport type { MutationKey } from '@tanstack/react-query';\n\nexport const walletMutationKeys = {\n\tall: { baseScope: 'wallet' },\n\tconnectWallet: formMutationKeyFn('connect-wallet'),\n\tautoconnectWallet: formMutationKeyFn('autoconnect-wallet'),\n\tdisconnectWallet: formMutationKeyFn('disconnect-wallet'),\n\tsignPersonalMessage: formMutationKeyFn('sign-personal-message'),\n\tsignTransaction: formMutationKeyFn('sign-transaction'),\n\tsignAndExecuteTransaction: formMutationKeyFn('sign-and-execute-transaction'),\n\tswitchAccount: formMutationKeyFn('switch-account'),\n\treportTransactionEffects: formMutationKeyFn('report-transaction-effects'),\n};\n\nfunction formMutationKeyFn(baseEntity: string) {\n\treturn function mutationKeyFn(additionalKeys: MutationKey = []) {\n\t\treturn [{ ...walletMutationKeys.all, baseEntity }, ...additionalKeys];\n\t};\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAKO,IAAM,qBAAqB;AAAA,EACjC,KAAK,EAAE,WAAW,SAAS;AAAA,EAC3B,eAAe,kBAAkB,gBAAgB;AAAA,EACjD,mBAAmB,kBAAkB,oBAAoB;AAAA,EACzD,kBAAkB,kBAAkB,mBAAmB;AAAA,EACvD,qBAAqB,kBAAkB,uBAAuB;AAAA,EAC9D,iBAAiB,kBAAkB,kBAAkB;AAAA,EACrD,2BAA2B,kBAAkB,8BAA8B;AAAA,EAC3E,eAAe,kBAAkB,gBAAgB;AAAA,EACjD,0BAA0B,kBAAkB,4BAA4B;AACzE;AAEA,SAAS,kBAAkB,YAAoB;AAC9C,SAAO,SAAS,cAAc,iBAA8B,CAAC,GAAG;AAC/D,WAAO,CAAC,EAAE,GAAG,mBAAmB,KAAK,WAAW,GAAG,GAAG,cAAc;AAAA,EACrE;AACD;",
-  "names": []
-}

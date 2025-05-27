@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["vanilla-extract-css-ns:src/components/connect-modal/views/WhatIsAWallet.css.ts.vanilla.css?source=LldoYXRJc0FXYWxsZXRfY29udGFpbmVyX18xa3Rwa3E5MCB7CiAgZGlzcGxheTogZmxleDsKICBmbGV4LWRpcmVjdGlvbjogY29sdW1uOwogIGFsaWduLWl0ZW1zOiBjZW50ZXI7Cn0KLldoYXRJc0FXYWxsZXRfY29udGVudF9fMWt0cGtxOTEgewogIGRpc3BsYXk6IGZsZXg7CiAgZmxleC1kaXJlY3Rpb246IGNvbHVtbjsKICBqdXN0aWZ5LWNvbnRlbnQ6IGNlbnRlcjsKICBmbGV4LWdyb3c6IDE7CiAgZ2FwOiAyMHB4OwogIHBhZGRpbmc6IDQwcHg7Cn0="],
-  "sourcesContent": ["[data-dapp-kit].WhatIsAWallet_container__1ktpkq90, [data-dapp-kit] .WhatIsAWallet_container__1ktpkq90 {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n}\n[data-dapp-kit].WhatIsAWallet_content__1ktpkq91, [data-dapp-kit] .WhatIsAWallet_content__1ktpkq91 {\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  flex-grow: 1;\n  gap: 20px;\n  padding: 40px;\n}"],
-  "mappings": ";AAAA,CAAC,cAAc,CAAC;AAAmC,CAAC,eAAe,CAAnD;AACd,WAAS;AACT,kBAAgB;AAChB,eAAa;AACf;AACA,CAAC,cAAc,CAAC;AAAiC,CAAC,eAAe,CAAjD;AACd,WAAS;AACT,kBAAgB;AAChB,mBAAiB;AACjB,aAAW;AACX,OAAK;AACL,WAAS;AACX;",
-  "names": []
-}

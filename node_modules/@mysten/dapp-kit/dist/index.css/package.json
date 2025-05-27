@@ -1,5 +1,0 @@
-{
-	"private": true,
-	"import": "../esm/index.css",
-	"main": "../cjs/index.css"
-}

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../src/utils/assertUnreachable.ts"],
-  "sourcesContent": ["// Copyright (c) Mysten Labs, Inc.\n// SPDX-License-Identifier: Apache-2.0\n\n/**\n * Utility for compile-time exhaustiveness checking.\n */\nexport function assertUnreachable(value: never): never {\n\tthrow new Error(`ERROR! Encountered an unexpected value: ${value}`);\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAMO,SAAS,kBAAkB,OAAqB;AACtD,QAAM,IAAI,MAAM,2CAA2C,KAAK,EAAE;AACnE;",
-  "names": []
-}

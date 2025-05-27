@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../src/index.ts"],
-  "sourcesContent": ["// Copyright (c) Mysten Labs, Inc.\n// SPDX-License-Identifier: Apache-2.0\n\nexport { registerSlushWallet, SlushWallet, SLUSH_WALLET_NAME } from './wallet/index.js';\n"],
-  "mappings": "AAGA,SAAS,qBAAqB,aAAa,yBAAyB;",
-  "names": []
-}
