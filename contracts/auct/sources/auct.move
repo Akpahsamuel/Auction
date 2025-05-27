@@ -39,8 +39,27 @@ module auct::auction_house {
         Claimed,
     }
 
+    public struct AuctionHouseCap  has key{
+        id: UID,
+        balance: Balance<SUI>,
+    }
 
-
+    public struct Auction has key, store {
+        id: UID,
+        creator: address,
+        title: String,
+        description: String,
+        starting_bid: u64,
+        current_bid: u64,
+        highest_bidder: address,
+        start_time: u64,
+        end_time: u64,
+        status: AuctionStatus,
+        bid_count: u64,
+        // bid tracking
+        bid_history: String,
+        bidder_info: String,
+    }
 
 
 
