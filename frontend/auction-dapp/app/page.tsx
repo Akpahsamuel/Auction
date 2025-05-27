@@ -62,14 +62,79 @@ export default function HomePage() {
 
             <div className="relative">
               <div className="relative z-10">
-                <Image
-                  src="/hero-art.png"
-                  alt="Preditor NFT Art"
-                  width={600}
-                  height={600}
-                  className="w-full h-auto"
-                  priority
-                />
+                <div className="animate-bounce w-[350px] mx-auto">
+                  <div className="relative transform hover:scale-110 transition-transform duration-300">
+                    
+                    {/* Robot Head */}
+                    <div className="relative mx-auto w-24 h-24 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-2xl shadow-xl border-3 border-white/20 mb-3">
+                      {/* Antenna */}
+                      <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
+                        <div className="w-1 h-4 bg-blue-300 rounded-full"></div>
+                        <div className="w-2 h-2 bg-red-400 rounded-full mx-auto animate-pulse"></div>
+                      </div>
+                      
+                      {/* Eyes */}
+                      <div className="flex justify-center items-center pt-4 space-x-3">
+                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-inner">
+                          <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+                        </div>
+                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-inner">
+                          <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+                        </div>
+                      </div>
+                      
+                      {/* Mouth */}
+                      <div className="mt-3 flex justify-center">
+                        <div className="w-8 h-1 bg-gray-800 rounded-full"></div>
+                      </div>
+                      
+                      {/* Head decorations */}
+                      <div className="absolute top-3 left-3 w-1.5 h-1.5 bg-green-400 rounded-full animate-ping"></div>
+                      <div className="absolute top-3 right-3 w-1.5 h-1.5 bg-yellow-400 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
+                    </div>
+
+                    {/* Robot Body */}
+                    <div className="relative mx-auto w-40 h-48 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-2xl shadow-2xl border-4 border-white/20">
+                      {/* Chest Panel */}
+                      <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-24 h-16 bg-gray-800 rounded-lg border-2 border-gray-600">
+                        <div className="flex justify-center items-center h-full space-x-2">
+                          <div className="w-2 h-8 bg-green-400 rounded-full animate-pulse"></div>
+                          <div className="w-2 h-6 bg-yellow-400 rounded-full animate-pulse" style={{animationDelay: '0.3s'}}></div>
+                          <div className="w-2 h-4 bg-red-400 rounded-full animate-pulse" style={{animationDelay: '0.6s'}}></div>
+                        </div>
+                      </div>
+                      
+                      {/* Control Buttons */}
+                      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-3">
+                        <div className="w-6 h-6 bg-blue-300 rounded-full shadow-inner hover:bg-blue-200 cursor-pointer transition-colors"></div>
+                        <div className="w-6 h-6 bg-purple-300 rounded-full shadow-inner hover:bg-purple-200 cursor-pointer transition-colors"></div>
+                        <div className="w-6 h-6 bg-pink-300 rounded-full shadow-inner hover:bg-pink-200 cursor-pointer transition-colors"></div>
+                      </div>
+                      
+                      {/* Side Panels */}
+                      <div className="absolute top-12 -left-2 w-4 h-12 bg-gray-700 rounded-l-lg"></div>
+                      <div className="absolute top-12 -right-2 w-4 h-12 bg-gray-700 rounded-r-lg"></div>
+                    </div>
+
+                    {/* Robot Arms */}
+                    <div className="absolute top-32 -left-8 w-6 h-20 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full transform rotate-12 origin-top shadow-xl">
+                      <div className="absolute -bottom-2 -left-1 w-8 h-8 bg-gray-600 rounded-full border-2 border-gray-500"></div>
+                    </div>
+                    <div className="absolute top-32 -right-8 w-6 h-20 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full transform -rotate-12 origin-top shadow-xl">
+                      <div className="absolute -bottom-2 -right-1 w-8 h-8 bg-gray-600 rounded-full border-2 border-gray-500"></div>
+                    </div>
+
+                    {/* Robot Legs */}
+                    <div className="flex justify-center space-x-4 mt-2">
+                      <div className="w-8 h-16 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full shadow-xl">
+                        <div className="absolute bottom-0 w-12 h-4 bg-gray-800 rounded-full transform -translate-x-2 shadow-lg"></div>
+                      </div>
+                      <div className="w-8 h-16 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full shadow-xl">
+                        <div className="absolute bottom-0 w-12 h-4 bg-gray-800 rounded-full transform -translate-x-2 shadow-lg"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 blur-3xl"></div>
             </div>
