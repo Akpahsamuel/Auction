@@ -61,6 +61,17 @@ module auct::auction_house {
         bidder_info: String,
     }
 
+
+    //Creating a bidder info struct
+    public struct BidderInfo has store,drop,copy{
+        total_amount_bid: u64,
+        bid_count:u64,
+        highest_bid :u64,
+        latest_bid_time: u64,
+
+    }
+
+
     // Represents an event when a bid is placed in an auction.
     // Contains details such as the auction ID, bidder's address, bid amount, and timestamp.
     public struct BidPlaced has drop, copy {
@@ -69,6 +80,7 @@ module auct::auction_house {
         bid_amount: u64,
         timestamp: u64,
     }
+
 
     // Represents an event when an auction ends.
     // Contains details such as the auction ID, winner's address, winning bid amount, and total number of bids.
