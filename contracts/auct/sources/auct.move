@@ -72,7 +72,7 @@ module auct::auction_house {
 
    
 
-    public struct Auction  has copy, drop {
+    public struct AuctionCreated  has copy, drop {
         auction_id: object::ID,
         creator: address,
         title: String,
