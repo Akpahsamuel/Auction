@@ -62,6 +62,25 @@ module auct::auction_house {
     }
 
 
+    //AuctionRegistry Struct
+
+    public struct AuctionRegistry has key {
+        id:UID,
+        auctions: Table<object::ID, bool>,
+        auction_count:u64
+    }
+
+   
+
+    public struct Auction  has copy, drop {
+        auction_id: object::ID,
+        creator: address,
+        title: String,
+        starting_bid: u64,
+        end_time: u64,
+    }
+
+
     //Creating a bidder info struct
     public struct BidderInfo has store,drop,copy{
         total_amount_bid: u64,
