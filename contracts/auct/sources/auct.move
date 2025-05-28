@@ -61,6 +61,15 @@ module auct::auction_house {
         bidder_info: String,
     }
 
+    //Creating a bidder info struct
+    public struct BidderInfo has store,drop,copy{
+        total_amount_bid: u64,
+        bid_count:u64,
+        highest_bid :u64,
+        latest_bid_time: u64,
+
+    }
+
 
 
 
