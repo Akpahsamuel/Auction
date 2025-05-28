@@ -1,12 +1,3 @@
-/*
-/// Module: auct
-module auct::auct;
-
-*/
-
-// For Move coding conventions, see
-// https://docs.sui.io/concepts/sui-move-concepts/conventions
-
 module auct::auction_house {
     use std::string::{Self,String};
     use sui::coin::{Self,Coin};
@@ -16,7 +7,6 @@ module auct::auction_house {
     use sui::event;
     use sui::table::{Self,Table};
     use sui::vec_map::{Self,VecMap};
-
 
 
     //ErrorCodes
@@ -41,8 +31,19 @@ module auct::auction_house {
 
     public struct AuctionHouseCap  has key{
         id: UID,
-        balance: Balance<SUI>,
+        fee_balance: Balance<SUI>,
     }
+
+
+
+    public struct NFTWrapper<T: key + store> has key, store {
+        id: UID,
+        nft: T,
+
+    }
+
+
+
 
     public struct Auction has key, store {
         id: UID,
@@ -57,44 +58,89 @@ module auct::auction_house {
         status: AuctionStatus,
         bid_count: u64,
         // bid tracking
-        bid_history: String,
-        bidder_info: String,
+        bid_history: vector<BidEntry>,
+        bidder_info: VecMap<address, BidderInfo>,
+        nft: NFTWrapper<T>,
+        stored_bids: VecMap<address, Balance<SUI>>,
+        highest_bid_balance: Balance<SUI>,
+
+
+    }
+    
+    
+    public struct BidEntry has store, drop, copy {
+        bidder: address,
+        amount: u64,
+        timestamp: u64,
+
     }
 
 
 
 
+    //AuctionRegistry Struct
+
+    public struct AuctionRegistry has key {
+        id:UID,
+        auctions: Table<object::ID, bool>,
+        auction_count:u64
+    }
 
 
+    //Event
+    public struct AuctionCreated  has copy, drop {
+        auction_id: object::ID,
+        creator: address,
+        title: String,
+        starting_bid: u64,
+        end_time: u64,
+    }
 
 
+    //Creating a bidder info struct
+    public struct BidderInfo has store,drop,copy{
+        total_amount_bid: u64,
+        bid_count:u64,
+        highest_bid :u64,
+        latest_bid_time: u64,
+
+    }
 
 
+    // Represents an event when a bid is placed in an auction.
+    // Contains details such as the auction ID, bidder's address, bid amount, and timestamp.
+    public struct BidPlaced has drop, copy {
+        auction_id: object::ID,
+        bidder: address,
+        bid_amount: u64,
+        timestamp: u64,
+    }
 
 
+    // Represents an event when an auction ends.
+    // Contains details such as the auction ID, winner's address, winning bid amount, and total number of bids.
+    public struct AuctionEnded has drop, copy {
+        auction_id: object::ID,
+        winner: address,
+        winning_bid: u64,
+        total_bids: u64,
+    }
 
+    // This struct represents an event when an auction is claimed.
+    public struct AuctionClaimed has drop, copy {
+        auction_id: object::ID,
+        winner: address,
+        final_amount: u64,
+        fee_collected: u64,
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // This struct represents a leaderboard entry for bidders in an auction.
+    public struct BidderLeaderboard has copy, drop {
+        auction_id: object::ID,
+        bidder: address,
+        total_bid_amount: u64,
+        bid_count: u64,
+        highest_bid: u64,
+        latest_bid_time: u64,
+    }
 }
