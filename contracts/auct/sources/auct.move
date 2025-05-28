@@ -70,7 +70,7 @@ module auct::auction_house {
         auction_count:u64
     }
 
-    //AuctionStruct
+   
 
     public struct Auction  has copy, drop {
         auction_id: object::ID,
@@ -81,38 +81,33 @@ module auct::auction_house {
     }
 
 
+    //Creating a bidder info struct
+    public struct BidderInfo has store,drop,copy{
+        total_amount_bid: u64,
+        bid_count:u64,
+        highest_bid :u64,
+        latest_bid_time: u64,
+
+    }
 
 
+    // Represents an event when a bid is placed in an auction.
+    // Contains details such as the auction ID, bidder's address, bid amount, and timestamp.
+    public struct BidPlaced has drop, copy {
+        auction_id: object::ID,
+        bidder: address,
+        bid_amount: u64,
+        timestamp: u64,
+    }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // Represents an event when an auction ends.
+    // Contains details such as the auction ID, winner's address, winning bid amount, and total number of bids.
+    public struct AuctionEnded has drop, copy {
+        auction_id: object::ID,
+        winner: address,
+        winning_bid: u64,
+        total_bids: u64,
+    }
 
 }
