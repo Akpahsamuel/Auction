@@ -9,7 +9,6 @@ module auct::auction_house {
     use sui::vec_map::{Self,VecMap};
 
 
-
     //ErrorCodes
 
     const EAuctionNotActive: u64 = 0;
@@ -61,8 +60,8 @@ module auct::auction_house {
         auction_count:u64
     }
 
-   
 
+    //Event
     public struct AuctionCreated  has copy, drop {
         auction_id: object::ID,
         creator: address,
