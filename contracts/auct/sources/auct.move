@@ -1,12 +1,3 @@
-/*
-/// Module: auct
-module auct::auct;
-
-*/
-
-// For Move coding conventions, see
-// https://docs.sui.io/concepts/sui-move-concepts/conventions
-
 module auct::auction_house {
     use std::string::{Self,String};
     use sui::coin::{Self,Coin};
@@ -16,7 +7,6 @@ module auct::auction_house {
     use sui::event;
     use sui::table::{Self,Table};
     use sui::vec_map::{Self,VecMap};
-
 
 
     //ErrorCodes
@@ -41,8 +31,19 @@ module auct::auction_house {
 
     public struct AuctionHouseCap  has key{
         id: UID,
-        balance: Balance<SUI>,
+        fee_balance: Balance<SUI>,
     }
+
+
+
+    public struct NFTWrapper<T: key + store> has key, store {
+        id: UID,
+        nft: T,
+
+    }
+
+
+
 
     public struct Auction has key, store {
         id: UID,
@@ -57,9 +58,24 @@ module auct::auction_house {
         status: AuctionStatus,
         bid_count: u64,
         // bid tracking
-        bid_history: String,
-        bidder_info: String,
+        bid_history: vector<BidEntry>,
+        bidder_info: VecMap<address, BidderInfo>,
+        nft: NFTWrapper<T>,
+        stored_bids: VecMap<address, Balance<SUI>>,
+        highest_bid_balance: Balance<SUI>,
+
+
     }
+    
+    
+    public struct BidEntry has store, drop, copy {
+        bidder: address,
+        amount: u64,
+        timestamp: u64,
+
+    }
+
+
 
 
     //AuctionRegistry Struct
@@ -70,8 +86,8 @@ module auct::auction_house {
         auction_count:u64
     }
 
-   
 
+    //Event
     public struct AuctionCreated  has copy, drop {
         auction_id: object::ID,
         creator: address,
