@@ -1,12 +1,3 @@
-/*
-/// Module: auct
-module auct::auct;
-
-*/
-
-// For Move coding conventions, see
-// https://docs.sui.io/concepts/sui-move-concepts/conventions
-
 module auct::auction_house {
     use std::string::{Self,String};
     use sui::coin::{Self,Coin};
