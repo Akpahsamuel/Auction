@@ -1,3 +1,4 @@
+// our commit  message
 # Auction
 
 A simple auction project implemented in the SUI Move language.
