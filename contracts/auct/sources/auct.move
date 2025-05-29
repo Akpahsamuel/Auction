@@ -57,6 +57,44 @@ module auct::auction_house {
         status: AuctionStatus,
         bid_count: u64,
         // bid tracking
+
+        bid_history: vector<BidEntry>,
+        bidder_info: VecMap<address, BidderInfo>,
+        nft: NFTWrapper<T>,
+        stored_bids: VecMap<address, Balance<SUI>>,
+        highest_bid_balance: Balance<SUI>,
+
+
+    }
+    
+    
+    public struct BidEntry has store, drop, copy {
+        bidder: address,
+        amount: u64,
+        timestamp: u64,
+
+    }
+
+
+
+
+    //AuctionRegistry Struct
+
+    public struct AuctionRegistry has key {
+        id:UID,
+        auctions: Table<object::ID, bool>,
+        auction_count:u64
+    }
+
+
+    //Event
+    public struct AuctionCreated  has copy, drop {
+        auction_id: object::ID,
+        creator: address,
+        title: String,
+        starting_bid: u64,
+        end_time: u64,
+
         bid_history: String,
         bidder_info: String,
     }
