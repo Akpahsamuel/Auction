@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ConnectButton } from "@mysten/dapp-kit";
-import { Search, Wallet, Menu, X } from "lucide-react";
+import { Search, Menu, X } from "lucide-react";
 import { Button } from "@radix-ui/themes";
 
 export function Navigation() {
@@ -15,7 +15,7 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="text-2xl font-bold gradient-text">
-              Preditor
+              Predator
             </Link>
           </div>
 
@@ -56,10 +56,7 @@ export function Navigation() {
             >
               <Search className="h-4 w-4" />
             </Button>
-            <button className="bg-[#006fee] !px-4 !py-2 rounded-2xl text-white font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-2 items-center">
-              <Wallet className="h-4 w-4 mr-2" />
-              Connect Wallet
-            </button>
+            <ConnectButton className="bg-[#006fee] !px-4 !py-2 rounded-2xl text-white font-semibold cursor-pointer hover:opacity-80 transition-all duration-300" />
           </div>
 
           <div className="md:hidden">
@@ -105,10 +102,7 @@ export function Navigation() {
                 My Auctions
               </Link>
               <div className="px-3 py-2">
-                <ConnectButton
-                  onClick={() => console.log("Button Clicked")}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
-                />
+                <ConnectButton className="w-full bg-gradient-to-r from-purple-600 to-pink-600" />
               </div>
             </div>
           </div>
