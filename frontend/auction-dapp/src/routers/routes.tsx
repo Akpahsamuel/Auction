@@ -1,6 +1,9 @@
 import { lazy } from "react";
 import { RouteProps } from "../types";
+
+// initialization of routes >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 const Home = lazy(() => import("../pages/main/Home"));
+const ViewAuctions = lazy(() => import("../pages/main/auctions"));
 
 // declaration of all routes >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 export const routes: RouteProps[] = [
@@ -9,5 +12,10 @@ export const routes: RouteProps[] = [
     label: "Home",
     component: <Home />,
     description: "Welcome to our Auction Website",
+  },
+  {
+    path: "/auctions",
+    label: "View all Auctions",
+    component: <ViewAuctions />,
   },
 ];
