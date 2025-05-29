@@ -100,9 +100,12 @@ export default function HomePage() {
           ))}
         </div>
         <div className="w-full mt-6 flex justify-center items-center">
-          <button className=" shadow-lg shadow-gray-800/30 shadow-btn">
+          <Link
+            to={"/auctions"}
+            className=" shadow-lg shadow-gray-800/30 shadow-btn"
+          >
             View All Auctions <ArrowRight size={16} />
-          </button>
+          </Link>
         </div>
       </div>
       <div className="w-full flex flex-col items-start justify-start gap-8">
