@@ -7,7 +7,6 @@ import { Button, DropdownMenu } from "@radix-ui/themes";
 const categories = ["All NFTs", "Digital Art", "Collectibles"];
 const ViewAuctions = () => {
   const [activeTab, setActiveTab] = useState("All NFTs");
-  const [activeSort, setActiveSort] = useState("Price");
   return (
     <div className="container py-10 flex flex-col gap-10 md:gap-20">
       <div className="w-full flex flex-col items-start justify-start gap-8">

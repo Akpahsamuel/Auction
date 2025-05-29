@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ConnectButton } from "@mysten/dapp-kit";
-import { Search, Wallet, Menu, X } from "lucide-react";
+import { Search, Menu, X, Wallet } from "lucide-react";
 import { Button } from "@radix-ui/themes";
 
 export function Navigation() {
