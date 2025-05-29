@@ -12,7 +12,7 @@ export default function HomePage() {
   return (
     <div className="container py-10 flex flex-col gap-10 md:gap-20">
       <div className="w-full flex flex-col md:flex-row items-start justify-between gap-10">
-        <div className="flex flex-col items-start justify-start max-w-[600px] gap-6 md:gap-10">
+        <div className="flex flex-col items-start justify-start md:max-w-[450px] lg:max-w-[600px] gap-6 md:gap-10">
           <h1 className=" text-3xl md:text-4xl lg:text-6xl font-bold">
             Discover, Collect & Sell{" "}
             <span className="gradient-text">Extraordinary </span>
