@@ -7,7 +7,7 @@ const Footer = () => {
       <div className="container py-4 flex flex-col md:flex-row justify-between items-center">
         <div className="flex items-center">
           <Link to="/" className="text-xl font-bold gradient-text">
-            NFTVerse
+            Predator
           </Link>
         </div>
         <div className="flex justify-end items-center gap-3 text-gray-600">

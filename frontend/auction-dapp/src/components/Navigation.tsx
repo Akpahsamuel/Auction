@@ -15,7 +15,7 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="text-2xl font-bold gradient-text">
-              NFTVerse
+              Predator
             </Link>
           </div>
 
