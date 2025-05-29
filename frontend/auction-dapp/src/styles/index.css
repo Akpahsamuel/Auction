@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap");
 
+body {
+  font-family: "Raleway", sans-serif;
+}
 @layer base {
   body {
     @apply bg-white dark:bg-blue-950;
@@ -15,10 +18,6 @@
   .gradient-text {
     @apply bg-gradient-to-r from-[#006fee] to-[#6020A0] text-transparent bg-clip-text;
   }
-}
-
-body {
-  font-family: "Raleway", sans-serif;
 }
 
 .container {

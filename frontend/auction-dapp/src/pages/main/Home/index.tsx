@@ -53,7 +53,7 @@ export default function HomePage() {
           }}
         >
           <div className="absolute w-full h-full bg-gradient-to-b from-transparent to-white/90 flex justify-end items-end">
-            <div className="w-full flex justify-between items-start gap-3 md:items-center px-10 py-5">
+            <div className="w-full flex flex-col md:flex-row justify-between items-start gap-3 md:items-center px-5 md:px-10 py-5">
               <div className="flex flex-col gap-2">
                 <p className="text-xl font-medium text-black">
                   Quantum Singularity #7

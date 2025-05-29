@@ -20,7 +20,7 @@ export function Navigation() {
           </div>
 
           <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline gap-5">
+            <div className=" flex items-baseline gap-5">
               {[
                 {
                   title: "Home",
@@ -85,8 +85,8 @@ export function Navigation() {
         </div>
 
         {isMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-black/40 backdrop-blur-md rounded-lg mt-2">
+          <div className="w-full md:hidden flex flex-col items-center gap-3">
+            <div className="w-full px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white/40 backdrop-blur-md rounded-lg mt-2 flex flex-col items-center gap-5">
               {[
                 {
                   title: "Home",
