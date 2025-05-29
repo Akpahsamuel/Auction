@@ -57,6 +57,7 @@ module auct::auction_house {
         status: AuctionStatus,
         bid_count: u64,
         // bid tracking
+
         bid_history: vector<BidEntry>,
         bidder_info: VecMap<address, BidderInfo>,
         nft: NFTWrapper<T>,
@@ -93,6 +94,9 @@ module auct::auction_house {
         title: String,
         starting_bid: u64,
         end_time: u64,
+
+        bid_history: String,
+        bidder_info: String,
     }
 
 
@@ -125,21 +129,4 @@ module auct::auction_house {
         total_bids: u64,
     }
 
-    // This struct represents an event when an auction is claimed.
-    public struct AuctionClaimed has drop, copy {
-        auction_id: object::ID,
-        winner: address,
-        final_amount: u64,
-        fee_collected: u64,
-    }
-
-    // This struct represents a leaderboard entry for bidders in an auction.
-    public struct BidderLeaderboard has copy, drop {
-        auction_id: object::ID,
-        bidder: address,
-        total_bid_amount: u64,
-        bid_count: u64,
-        highest_bid: u64,
-        latest_bid_time: u64,
-    }
 }
