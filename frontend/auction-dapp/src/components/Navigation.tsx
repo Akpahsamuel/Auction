@@ -34,7 +34,7 @@ export function Navigation() {
                 Auctions
               </Link>
               <Link
-                to="/create"
+                to="/createnft"
                 className="text-black hover:text-purple-300 transition-colors"
               >
                 Create

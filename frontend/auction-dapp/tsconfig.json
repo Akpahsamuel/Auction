@@ -21,5 +21,13 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
+  "exclude": [
+    "src/components/FormDataContext.tsx",
+    "src/components/FormField.tsx",
+    "src/components/FormHeader.tsx",
+    "src/components/ImageUpload.tsx",
+    "src/components/NFTForm.tsx",
+    "src/components/NFTPreview.tsx"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

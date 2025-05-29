@@ -59,7 +59,7 @@ export function AuctionCard({
             <div className="flex items-center font-semibold text-lg">
               <FaEthereum className="text-gray-800 mr-1" />
               {current_bid}{" "}
-              <span className="text-xs text-gray-500 font-normal"> ETH</span>
+              <span className="text-xs text-gray-500 font-normal"> SUI</span>
             </div>
           </div>
           <div>
