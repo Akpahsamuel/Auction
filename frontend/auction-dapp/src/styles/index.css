@@ -11,7 +11,7 @@
     @apply text-[#006fee] !px-5 !py-3 rounded-2xl bg-[#006fee]/20    font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-2 items-center;
   }
   .gradient-text {
-    @apply gradient-text;
+    @apply bg-gradient-to-r from-[#006fee] to-[#6020A0] text-transparent bg-clip-text;
   }
 }
 
