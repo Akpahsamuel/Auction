@@ -54,25 +54,13 @@ const ViewAuctions = () => {
                   size="4"
                   className="!rounded-full !text-gray-500 !bg-gray-100 !cursor-pointer !text-sm"
                 >
-
-                  Sort By: {activeSort}
-
                   Sort By
-
                   <DropdownMenu.TriggerIcon />
                 </Button>
               </DropdownMenu.Trigger>
               <DropdownMenu.Content size="2">
                 {["Price", "Start Time", "End Time"].map((sort, index) => (
-
-                  <DropdownMenu.Item
-                    key={index}
-                    className="!cursor-pointer"
-                    onClick={() => setActiveSort(sort)}
-                  >
-
                   <DropdownMenu.Item key={index} className="!cursor-pointer">
-
                     {sort}
                   </DropdownMenu.Item>
                 ))}
