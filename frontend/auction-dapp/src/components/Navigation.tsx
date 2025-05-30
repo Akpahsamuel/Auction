@@ -20,33 +20,6 @@ export function Navigation() {
           </div>
 
           <div className="hidden md:block">
-
-            <div className="ml-10 flex items-baseline  gap-3">
-              <Link
-                to="/"
-                className="text-black hover:text-purple-300 transition-colors"
-              >
-                Home
-              </Link>
-              <Link
-                to="/auctions"
-                className="text-black hover:text-purple-300 transition-colors"
-              >
-                Auctions
-              </Link>
-              <Link
-                to="/createnft"
-                className="text-black hover:text-purple-300 transition-colors"
-              >
-                Create
-              </Link>
-              <Link
-                to="/my-auctions"
-                className="text-black hover:text-purple-300 transition-colors"
-              >
-                My Auctions
-              </Link>
-
             <div className="ml-10 flex items-baseline gap-5">
               {[
                 {
@@ -59,7 +32,7 @@ export function Navigation() {
                 },
                 {
                   title: "Create",
-                  route: "/create",
+                  route: "/createnft",
                 },
                 {
                   title: "My Auctions",
@@ -74,7 +47,6 @@ export function Navigation() {
                   {nav.title}
                 </Link>
               ))}
-
             </div>
           </div>
 
@@ -126,7 +98,7 @@ export function Navigation() {
                 },
                 {
                   title: "Create",
-                  route: "/create",
+                  route: "/createnft",
                 },
                 {
                   title: "My Auctions",
