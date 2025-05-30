@@ -74,7 +74,7 @@ export function AuctionCard({
           <button className="text-[#006fee] h-[40px] rounded-xl bg-[#006fee]/20 font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-1.5 items-center w-full text-[8px]">
             <Eye size={14} /> <span className="text-[14px]">View Details</span>
           </button>
-          <button className="bg-[#006fee] h-[40px] rounded-xl text-white font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-1.5 items-center w-full text-[8px] shadow shadow-md shadow-black/20">
+          <button className="bg-[#006fee] h-[40px] rounded-xl text-white font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-1.5 items-center w-full text-[8px] shadow-md shadow-black/20">
             <Gavel size={14} /> <span className="text-[14px]">Place Bid</span>
           </button>
         </div>
