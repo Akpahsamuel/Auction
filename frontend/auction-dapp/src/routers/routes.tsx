@@ -6,6 +6,7 @@ const Home = lazy(() => import("../pages/main/Home"));
 const ViewAuctions = lazy(() => import("../pages/main/auctions"));
 const MyBids = lazy(() => import("../pages/my-bids"));
 const Profile = lazy(() => import("../pages/profile"));
+const CreateNFTPage = lazy(()=> import("../pages/main/createnft/CreateNFTPage"))
 
 // declaration of all routes >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 export const routes: RouteProps[] = [
@@ -31,5 +32,11 @@ export const routes: RouteProps[] = [
     label: "Profile",
     component: <Profile />,
     description: "View and manage your profile",
+  },
+  {
+    path: "/createnft",
+    label: "Creae NFT",
+    component: <CreateNFTPage />,
+
   },
 ];

@@ -58,7 +58,14 @@ export default function HomePage() {
                 <p className="text-xl font-medium text-black">
                   Quantum Singularity #7
                 </p>
-                <p className="text-gray-500">Current bid: 4.85 ETH</p>
+
+                <p className="text-gray-500">Current bid: 4.85 SUI</p>
+
+                <p className="text-gray-500">
+                  Current bid:{" "}
+                  <span className="text-gray-900 font-semibold">4.85 SUI</span>
+                </p>
+
               </div>
               <button className="shadow-lg shadow-gray-800/30 colored-btn text-sm">
                 <Gavel size={16} /> Place Bid
