@@ -1,4 +1,4 @@
-import { Navigation } from "./components/Navigation";
+import Header from "./components/Header";
 
 const Layout = ({
   children,
@@ -6,9 +6,11 @@ const Layout = ({
   children: React.ReactComponentElement<never> | React.ReactElement;
 }) => {
   return (
-    <div>
-      <Navigation />
-      {children}
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-grow">
+        {children}
+      </main>
     </div>
   );
 };

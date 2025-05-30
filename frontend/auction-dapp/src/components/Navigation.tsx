@@ -45,6 +45,12 @@ export function Navigation() {
               >
                 My Auctions
               </Link>
+              <Link
+                to="/my-bids"
+                className="text-black hover:text-purple-300 transition-colors"
+              >
+                My Bids
+              </Link>
             </div>
           </div>
 
@@ -100,6 +106,12 @@ export function Navigation() {
                 className="block px-3 py-2 text-white hover:text-purple-300"
               >
                 My Auctions
+              </Link>
+              <Link
+                to="/my-bids"
+                className="block px-3 py-2 text-white hover:text-purple-300"
+              >
+                My Bids
               </Link>
               <div className="px-3 py-2">
                 <ConnectButton className="w-full bg-gradient-to-r from-purple-600 to-pink-600" />
