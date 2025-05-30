@@ -32,7 +32,7 @@ export function Navigation() {
                 },
                 {
                   title: "Create",
-                  route: "/create",
+                  route: "/createnft",
                 },
                 {
                   title: "My Auctions",
@@ -98,7 +98,7 @@ export function Navigation() {
                 },
                 {
                   title: "Create",
-                  route: "/create",
+                  route: "/createnft",
                 },
                 {
                   title: "My Auctions",

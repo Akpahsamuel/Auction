@@ -50,11 +50,11 @@ export const NFTCollectionCard = ({
       <div className="mt-4 flex justify-between text-sm text-gray-600">
         <div>
           <p className="text-xs">Floor Price</p>
-          <p className="font-medium">{price} ETH</p>
+          <p className="font-medium">{price} SUI</p>
         </div>
         <div>
           <p className="text-xs">Volume</p>
-          <p className="font-medium">{volume} ETH</p>
+          <p className="font-medium">{volume} SUI</p>
         </div>
         <button className="text-[#006fee] !px-4 !py-2 rounded-lg bg-[#006fee]/20 font-semibold cursor-pointer hover:opacity-80 transition-all duration-300">
           View
