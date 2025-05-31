@@ -1,8 +1,7 @@
 import { Eye, Gavel } from "lucide-react";
-import { FaEthereum } from "react-icons/fa";
 import { FiClock } from "react-icons/fi";
 import moment from "moment";
-
+import suiIcon from "../../assets/icons/sui-icon.png";
 export interface AuctionCardType {
   title: string;
   desc?: string;
@@ -56,8 +55,8 @@ export function AuctionCard({
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-xs text-gray-500">Current Bid</p>
-            <div className="flex items-center font-semibold text-lg">
-              <FaEthereum className="text-gray-800 mr-1" />
+            <div className="flex items-center gap-1 font-semibold text-lg">
+              <img src={suiIcon} className="w-5 h-5" />
               {current_bid}{" "}
               <span className="text-xs text-gray-500 font-normal"> SUI</span>
             </div>

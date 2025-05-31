@@ -12,7 +12,7 @@ export default function HomePage() {
   return (
     <div className="container py-10 flex flex-col gap-10 md:gap-20">
       <div className="w-full flex flex-col md:flex-row items-start justify-between gap-10">
-        <div className="flex flex-col items-start justify-start max-w-[600px] gap-6 md:gap-10">
+        <div className="flex flex-col items-start justify-start md:max-w-[450px] lg:max-w-[600px] gap-6 md:gap-10">
           <h1 className=" text-3xl md:text-4xl lg:text-6xl font-bold">
             Discover, Collect & Sell{" "}
             <span className="gradient-text">Extraordinary </span>
@@ -53,7 +53,7 @@ export default function HomePage() {
           }}
         >
           <div className="absolute w-full h-full bg-gradient-to-b from-transparent to-white/90 flex justify-end items-end">
-            <div className="w-full flex justify-between items-start gap-3 md:items-center px-10 py-5">
+            <div className="w-full flex flex-col md:flex-row justify-between items-start gap-3 md:items-center px-5 md:px-10 py-5">
               <div className="flex flex-col gap-2">
                 <p className="text-xl font-medium text-black">
                   Quantum Singularity #7
