@@ -18,6 +18,9 @@ body {
   .gradient-text {
     @apply bg-gradient-to-r from-[#006fee] to-[#6020A0] text-transparent bg-clip-text;
   }
+  .input-style {
+    @apply w-full px-3 py-3 rounded-lg border border-gray-300 !mt-2 focus:outline-none focus:border-[#6020A0];
+  }
 }
 
 .container {
