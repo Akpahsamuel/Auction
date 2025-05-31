@@ -17,6 +17,7 @@ module auct::auction_house {
     const EInsufficientPayment: u64 = 6;
     const EMinimumBidIncrement: u64 = 8;
     const ESelfBidding: u64 = 9;
+    const ENotHighestBidder: u64 = 10;
 
     // Constants
     const FEE_PERCENTAGE: u64 = 1; // 1% fee
@@ -360,7 +361,7 @@ module auct::auction_house {
         let claimer = tx_context::sender(ctx);
         
         // Only the highest bidder can claim
-        assert!(claimer == auction.highest_bidder, ENotAuctionCreator);
+        assert!(claimer == auction.highest_bidder, ENotHighestBidder);
         assert!(matches(&auction.status, &AuctionStatus::Ended), EAuctionStillActive);
 
         // Extract creator before destructuring
