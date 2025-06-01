@@ -18,6 +18,7 @@ module auct::auction_house {
     const EMinimumBidIncrement: u64 = 8;
     const ESelfBidding: u64 = 9;
     const ENotHighestBidder: u64 = 10;
+    const EDateNotInFuture: u64 = 11;
 
     // Constants
     const FEE_PERCENTAGE: u64 = 1; // 1% fee
@@ -160,18 +161,20 @@ module auct::auction_house {
         title: vector<u8>,
         description: vector<u8>,
         starting_bid: u64,
-        duration_ms: u64,
+        auction_end: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         let current_time = clock::timestamp_ms(clock);
-        let end_time = current_time + duration_ms;
+        let end_time =  auction_end;
 
         // Wrap the NFT
         let nft_wrapper = NFTWrapper {
             id: object::new(ctx),
             nft,
         };
+
+        assert!(end_time > current_time,  EDateNotInFuture, "Auction end time must be in the future");
 
         let auction = Auction {
             id: object::new(ctx),
@@ -328,8 +331,7 @@ module auct::auction_house {
     ) {
         let current_time = clock::timestamp_ms(clock);
         
-        // Check if auction can be ended
-        assert!(matches(&auction.status, &AuctionStatus::Active), EAuctionNotActive);
+        // Only check if auction end time has passed
         assert!(current_time >= auction.end_time, EAuctionStillActive);
 
         // Update status
