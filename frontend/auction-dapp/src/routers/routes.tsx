@@ -1,6 +1,5 @@
 import { lazy } from "react";
 import { RouteProps } from "../types";
-import CreateNFTPage from "../pages/main/createnft/CreateNFTPage";
 
 // initialization of routes >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 const Home = lazy(() => import("../pages/main/Home"));
@@ -20,11 +19,7 @@ export const routes: RouteProps[] = [
     label: "View all Auctions",
     component: <ViewAuctions />,
   },
-  {
-    path: "/createnft",
-    label: "Creae NFT",
-    component: <CreateNFTPage />,
-  },
+
   {
     path: "/create",
     label: "Creae NFT",
