@@ -174,7 +174,7 @@ module auct::auction_house {
             nft,
         };
 
-        assert!(end_time > current_time,  EDateNotInFuture, "Auction end time must be in the future");
+        assert!(end_time > current_time,  EDateNotInFuture);
 
         let auction = Auction {
             id: object::new(ctx),
