@@ -5,6 +5,7 @@ import * as Label from "@radix-ui/react-label";
 import createImg from "../../../assets/images/create-auction.jpg";
 import { Auction } from "../../../types";
 import { useCreateAuction } from "../../../hooks/use-create-auction";
+import suiIcon from "../../../assets/icons/sui-icon.png";
 const auctionSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
@@ -109,13 +110,19 @@ const Index = () => {
                 <Label.Root htmlFor="startingBid">
                   Starting Bid (in SUI)
                 </Label.Root>
-                <input
-                  id="startingBid"
-                  type="number"
-                  step="0.01"
-                  {...register("startingBid", { valueAsNumber: true })}
-                  className="input-style"
-                />
+                <div className="relative">
+                  <img
+                    src={suiIcon}
+                    className="w-6 h-6 absolute left-2 top-[20px]"
+                  />
+                  <input
+                    id="startingBid"
+                    type="number"
+                    step="0.01"
+                    {...register("startingBid", { valueAsNumber: true })}
+                    className="input-style pl-10"
+                  />
+                </div>
                 {errors.startingBid && (
                   <p className="text-red-500 text-sm">
                     {errors.startingBid.message}
