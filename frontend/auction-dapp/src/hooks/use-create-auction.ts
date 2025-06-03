@@ -18,7 +18,7 @@ export const useCreateAuction = () => {
 
     try {
       const createAuctionTx = await tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction::create_auction`,
+        target: `${DEVNET_PACKAGE_ID}::auction_house::create_auction`,
         arguments: [
           registryArg,
           nftArg,
