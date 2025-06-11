@@ -34,10 +34,10 @@ export function Navigation() {
                   title: "Create",
                   route: "/create",
                 },
-                {
-                  title: "My Auctions",
-                  route: "/my-auctions",
-                },
+                // {
+                //   title: "My Auctions",
+                //   route: "/my-auctions",
+                // },
               ].map((nav) => (
                 <Link
                   to={nav.route}
@@ -100,10 +100,10 @@ export function Navigation() {
                   title: "Create",
                   route: "/create",
                 },
-                {
-                  title: "My Auctions",
-                  route: "/my-auctions",
-                },
+                // {
+                //   title: "My Auctions",
+                //   route: "/my-auctions",
+                // },
               ].map((nav) => (
                 <Link
                   to={nav.route}

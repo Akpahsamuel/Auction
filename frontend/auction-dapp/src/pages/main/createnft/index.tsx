@@ -4,8 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as Label from "@radix-ui/react-label";
 import createImg from "../../../assets/images/create-auction.jpg";
 import { Auction } from "../../../types";
-import { useCreateAuction } from "../../../hooks/use-create-auction";
+import { useAuctionHook } from "../../../hooks/use-create-auction";
 import suiIcon from "../../../assets/icons/sui-icon.png";
+import { useMutation } from "@tanstack/react-query";
 const auctionSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
@@ -26,9 +27,6 @@ const Index = () => {
   } = useForm<AuctionFormType>({
     resolver: zodResolver(auctionSchema),
   });
-
-  const { createAuction } = useCreateAuction();
-
   const onSubmit = async (data: AuctionFormType) => {
     const durationMs = new Date(data.endTime).getTime() - new Date().getTime();
     console.log("durationMs", durationMs);
@@ -42,6 +40,11 @@ const Index = () => {
     const result = await createAuction(auction);
     console.log("result", result);
   };
+  const { mutate: mutateSubmission, isPending } = useMutation({
+    mutationFn: onSubmit,
+  });
+
+  const { createAuction } = useAuctionHook();
 
   return (
     <div className="container py-10 flex flex-col gap-10 md:gap-20">
@@ -62,7 +65,7 @@ const Index = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                handleSubmit(onSubmit)();
+                handleSubmit((data) => mutateSubmission(data))();
               }}
               className="w-full flex flex-col gap-6"
             >
@@ -160,14 +163,18 @@ const Index = () => {
                 )}
               </div>
 
-              <button type="submit" className="colored-btn">
-                Create Auction
+              <button
+                type="submit"
+                className="colored-btn"
+                disabled={isPending}
+              >
+                {isPending ? "Loading..." : "Create Auction"}
               </button>
             </form>
           </div>
 
           <div
-            className=" border border-white shadow-xl shadow-blue-900/20 bg-cover bg-top !h-full !w-full min-h-[400px] md:min-h-[600px] rounded-2xl flex justify-center items-center relative overflow-hidden"
+            className="hidden border border-white shadow-xl shadow-blue-900/20 bg-cover bg-top !h-full !w-full min-h-[400px] md:min-h-[600px] rounded-2xl lg:flex justify-center items-center relative overflow-hidden"
             style={{ backgroundImage: `url(${createImg})` }}
           ></div>
         </div>

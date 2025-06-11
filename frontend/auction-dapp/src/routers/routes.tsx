@@ -5,6 +5,7 @@ import { RouteProps } from "../types";
 const Home = lazy(() => import("../pages/main/Home"));
 const ViewAuctions = lazy(() => import("../pages/main/auctions"));
 const CreateAuction = lazy(() => import("../pages/main/createnft"));
+const NotFound = lazy(() => import("../components/not-found"));
 
 // declaration of all routes >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 export const routes: RouteProps[] = [
@@ -24,5 +25,11 @@ export const routes: RouteProps[] = [
     path: "/create",
     label: "Creae NFT",
     component: <CreateAuction />,
+  },
+
+  {
+    path: "*",
+    label: "Page not found",
+    component: <NotFound />,
   },
 ];

@@ -5,25 +5,25 @@ import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { toast } from "react-toastify";
 
-export const useCreateAuction = () => {
+export const useAuctionHook = () => {
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
 
   const createAuction = async (auction: Auction) => {
     try {
       // Create a new transaction for each auction creation
       const tx = new Transaction();
-      
+
       // Initialize Sui client for devnet
       const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
+
       // Get the NFT object to determine its type
       const nftObject = await client.getObject({
         id: auction.nftId,
-        options: { 
-          showType: true, 
+        options: {
+          showType: true,
           showOwner: true,
-          showContent: true 
-        }
+          showContent: true,
+        },
       });
 
       if (!nftObject.data) {
@@ -36,8 +36,14 @@ export const useCreateAuction = () => {
       }
 
       // Validate that the NFT is owned by the current user
-      if (!nftObject.data.owner || typeof nftObject.data.owner !== 'object' || !('AddressOwner' in nftObject.data.owner)) {
-        throw new Error("NFT is not owned by an address or ownership cannot be determined");
+      if (
+        !nftObject.data.owner ||
+        typeof nftObject.data.owner !== "object" ||
+        !("AddressOwner" in nftObject.data.owner)
+      ) {
+        throw new Error(
+          "NFT is not owned by an address or ownership cannot be determined",
+        );
       }
 
       console.log("NFT Type discovered:", nftType);
@@ -49,8 +55,14 @@ export const useCreateAuction = () => {
       // Prepare move call arguments
       const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
       const nftArg = tx.object(auction.nftId);
-      const titleArg = tx.pure.vector("u8", Array.from(new TextEncoder().encode(auction.title)));
-      const descriptionArg = tx.pure.vector("u8", Array.from(new TextEncoder().encode(auction.description)));
+      const titleArg = tx.pure.vector(
+        "u8",
+        Array.from(new TextEncoder().encode(auction.title)),
+      );
+      const descriptionArg = tx.pure.vector(
+        "u8",
+        Array.from(new TextEncoder().encode(auction.description)),
+      );
       const startingBidArg = tx.pure.u64(startingBidMist);
       const durationMsArg = tx.pure.u64(auction.durationMs);
       const clockArg = tx.object("0x6"); // System clock object
@@ -70,14 +82,13 @@ export const useCreateAuction = () => {
         ],
       });
 
-      
       signAndExecuteTransaction(
         { transaction: tx },
         {
           onSuccess: (result) => {
             console.log("Auction created successfully!", result);
             toast.success("Auction created successfully!");
-            
+
             // Log transaction details for debugging
             console.log("Transaction digest:", result.digest);
           },
@@ -87,34 +98,82 @@ export const useCreateAuction = () => {
           },
         },
       );
-
     } catch (error: any) {
       console.error("Error preparing transaction:", error);
-      toast.error(`Failed to create auction: ${error.message || "Unknown error"}`);
+      toast.error(
+        `Failed to create auction: ${error.message || "Unknown error"}`,
+      );
     }
   };
 
-  const handleTransactionError = (error: any) => {
-    console.error("Transaction error details:", error);
-    
-    const errorMessage = error.message || error.toString();
-    
-    if (errorMessage.includes("VMVerificationOrDeserializationError")) {
-      toast.error("Transaction verification failed. Please check that you own the NFT and try again.");
-    } else if (errorMessage.includes("InsufficientGas")) {
-      toast.error("Insufficient gas. Please add more SUI to your wallet.");
-    } else if (errorMessage.includes("ObjectNotFound")) {
-      toast.error("NFT object not found. Please check the NFT ID.");
-    } else if (errorMessage.includes("InvalidObjectType")) {
-      toast.error("Invalid NFT type. Please ensure the object is a valid NFT.");
-    } else if (errorMessage.includes("not owned by")) {
-      toast.error("You don't own this NFT. You can only auction NFTs you own.");
-    } else if (errorMessage.includes("Package object does not exist")) {
-      toast.error("Auction contract not found. Please ensure you're connected to the correct network.");
-    } else {
-      toast.error(`Transaction failed: ${errorMessage}`);
+  const getAllAuctionsById = async () => {
+    const client = new SuiClient({ url: getFullnodeUrl("devnet") });
+    try {
+      const fieldsResponse = await client.getDynamicFields({
+        parentId: DEVNET_AUCTION_REGISTRY_ID,
+      });
+
+      if (!fieldsResponse.data || fieldsResponse.data.length === 0) {
+        console.log(fieldsResponse.data);
+        console.log("No dynamic fields (auctions) found in the registry.");
+        return [];
+      }
+
+      const auctionIds: string[] = [];
+      for (const field of fieldsResponse.data) {
+        if (typeof field.name.value === "string") {
+          auctionIds.push(field.name.value);
+        }
+      }
+
+      console.log("Discovered Auction IDs from registry table:", auctionIds);
+
+      // 2. Fetch the actual Auction objects using their IDs
+      if (auctionIds.length > 0) {
+        const auctionObjects = await client.multiGetObjects({
+          ids: auctionIds,
+          options: {
+            showContent: true, // To get the actual data fields of the Auction
+            showType: true,
+            showOwner: true,
+          },
+        });
+        console.log("Fetched Auction Objects:", auctionObjects);
+        return auctionObjects;
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Error fetching auctions from registry table:", error);
+      return [];
     }
   };
 
-  return { createAuction };
+  return { createAuction, getAllAuctionsById };
+};
+
+const handleTransactionError = (error: any) => {
+  console.error("Transaction error details:", error);
+
+  const errorMessage = error.message || error.toString();
+
+  if (errorMessage.includes("VMVerificationOrDeserializationError")) {
+    toast.error(
+      "Transaction verification failed. Please check that you own the NFT and try again.",
+    );
+  } else if (errorMessage.includes("InsufficientGas")) {
+    toast.error("Insufficient gas. Please add more SUI to your wallet.");
+  } else if (errorMessage.includes("ObjectNotFound")) {
+    toast.error("NFT object not found. Please check the NFT ID.");
+  } else if (errorMessage.includes("InvalidObjectType")) {
+    toast.error("Invalid NFT type. Please ensure the object is a valid NFT.");
+  } else if (errorMessage.includes("not owned by")) {
+    toast.error("You don't own this NFT. You can only auction NFTs you own.");
+  } else if (errorMessage.includes("Package object does not exist")) {
+    toast.error(
+      "Auction contract not found. Please ensure you're connected to the correct network.",
+    );
+  } else {
+    toast.error(`Transaction failed: ${errorMessage}`);
+  }
 };
