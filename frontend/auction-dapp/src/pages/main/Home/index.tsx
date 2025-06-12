@@ -1,14 +1,11 @@
 import { ArrowRight, CirclePlus, Gavel } from "lucide-react";
 import heroImg from "../../../assets/images/hero-img.jpg";
-import { useState } from "react";
 import { AuctionCard } from "../../../components/miscellaneous/auction-card";
 import { auctionData } from "../../../contexts/data";
 import { Link } from "react-router-dom";
 import { NFTCollectionCard } from "../../../components/miscellaneous/nft-collection-card";
-const categories = ["All NFTs", "Digital Art", "Collectibles"];
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState("All NFTs");
   return (
     <div className="container py-10 flex flex-col gap-10 md:gap-20">
       <div className="w-full flex flex-col md:flex-row items-start justify-between gap-10">

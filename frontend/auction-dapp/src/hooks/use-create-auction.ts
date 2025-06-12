@@ -50,7 +50,7 @@ export const useAuctionHook = () => {
       console.log("NFT Owner:", nftObject.data.owner);
 
       // Convert starting bid from SUI to MIST (1 SUI = 1,000,000,000 MIST)
-      const startingBidMist = Math.floor(auction.startingBid * 1_000_000_000);
+      const startingBidMist = Math.floor(auction.startingBid * 1);
 
       // Prepare move call arguments
       const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
@@ -106,12 +106,83 @@ export const useAuctionHook = () => {
     }
   };
 
+  // const verifyRegistry = async () => {
+  //   const client = new SuiClient({ url: getFullnodeUrl("devnet") });
+  //   try {
+  //     const registryObject = await client.getObject({
+  //       id: DEVNET_AUCTION_REGISTRY_ID,
+  //       options: { showContent: true, showType: true, showOwner: true },
+  //     });
+
+  //     console.log(
+  //       "Registry Object Data:",
+  //       JSON.stringify(registryObject, null, 2),
+  //     );
+
+  //     if (
+  //       registryObject.data?.content?.dataType === "moveObject" &&
+  //       registryObject.data.content.fields
+  //     ) {
+  //       // Check if the 'auctions' field exists and its type (should be a Table ID)
+  //       const auctionsField = (registryObject.data.content.fields as any)
+  //         .auctions;
+  //       console.log(auctionsField);
+  //       if (auctionsField && typeof auctionsField === "string") {
+  //         console.log("Found 'auctions' field with ID:", auctionsField);
+  //         // Now, try to get dynamic fields from THIS ID, if `auctions` itself is a separate Table object
+  //         // If `auctions` is an ID *of the table itself*, then your parentId should be `auctionsField`
+  //         // If `auctions` is an inline field *containing* the table, then `DEVNET_AUCTION_REGISTRY_ID` is correct.
+  //         // This depends on how your `AuctionRegistry` struct is defined.
+  //         // Most likely, `auctions` is a Table<ID, bool> *within* the AuctionRegistry.
+  //       } else {
+  //         console.log("No 'auctions' field or it's not a direct ID.");
+  //       }
+  //     } else {
+  //       console.log("Registry object content not found or not a Move object.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching registry object:", error);
+  //   }
+  // };
+
   const getAllAuctionsById = async () => {
     const client = new SuiClient({ url: getFullnodeUrl("devnet") });
+    // verifyRegistry();
     try {
-      const fieldsResponse = await client.getDynamicFields({
-        parentId: DEVNET_AUCTION_REGISTRY_ID,
+      const registryObjectResponse = await client.getObject({
+        id: DEVNET_AUCTION_REGISTRY_ID,
+        options: { showContent: true },
       });
+
+      if (
+        !registryObjectResponse.data ||
+        registryObjectResponse.data.content?.dataType !== "moveObject" ||
+        !registryObjectResponse.data.content.fields
+      ) {
+        console.error(
+          "AuctionRegistry object not found or content not accessible.",
+        );
+        return [];
+      }
+
+      // Extract the ID of the inner table from the registry object's fields
+      // This is the crucial change based on your discovery!
+      const innerTableId = (registryObjectResponse.data.content.fields as any)
+        .auctions.fields.id.id;
+
+      if (!innerTableId) {
+        console.error(
+          'Could not find the ID of the inner "auctions" table within the registry.',
+        );
+        return [];
+      }
+
+      console.log("Found inner table ID:", innerTableId);
+
+      const fieldsResponse = await client.getDynamicFields({
+        parentId: innerTableId,
+      });
+      console.log(fieldsResponse);
 
       if (!fieldsResponse.data || fieldsResponse.data.length === 0) {
         console.log(fieldsResponse.data);
@@ -149,7 +220,29 @@ export const useAuctionHook = () => {
     }
   };
 
-  return { createAuction, getAllAuctionsById };
+  const getAuctionDetailById = async (id: string) => {
+    const client = new SuiClient({ url: getFullnodeUrl("devnet") });
+    try {
+      const response = await client.getObject({
+        id: id,
+        options: {
+          showContent: true,
+          showType: true,
+          showOwner: true,
+        },
+      });
+      if (response) {
+        console.log(response);
+        return response;
+      }
+      return {};
+    } catch (error) {
+      console.error("Error fetching auctions from registry table:", error);
+      return {};
+    }
+  };
+
+  return { createAuction, getAllAuctionsById, getAuctionDetailById };
 };
 
 const handleTransactionError = (error: any) => {

@@ -89,32 +89,37 @@ const ViewAuctions = () => {
             </DropdownMenu.Root>
           </div>
         </div>
-        <div className="flex justify-center items-center w-full h-full">
-          <div className="py-10 max-w-[600px] flex flex-col gap-4 items-center">
-            <IoMdBasket size={160} className="text-gray-500" />
-            <p className="text-3xl font-semibold">
-              Ooops!!! Nothing is here yet!
-            </p>
-            <p className="text-gray-500 text-center">
-              There are currently no created auction yet, click on the create
-              auction button to place an item on auction!
-            </p>
-          </div>
-        </div>
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {auctions?.map((data, index) => {
             const content = data.data?.content;
-            if (!content || !("fields" in content)) return null;
+            if (!content || !("fields" in content))
+              return (
+                <div className="flex justify-center items-center w-full h-full">
+                  <div className="py-10 max-w-[600px] flex flex-col gap-4 items-center">
+                    <IoMdBasket size={160} className="text-gray-500" />
+                    <p className="text-3xl font-semibold">
+                      Ooops!!! Nothing is here yet!
+                    </p>
+                    <p className="text-gray-500 text-center">
+                      There are currently no created auction yet, click on the
+                      create auction button to place an item on auction!
+                    </p>
+                  </div>
+                </div>
+              );
 
             const fields = content.fields as any;
+            console.log("content", content);
+            console.log("fields", fields);
             return (
               <AuctionCard
+                id={fields.id.id}
                 key={index}
                 title={fields.title || ""}
                 current_bid={Number(fields.current_bid) / 1_000_000_000}
                 start_time={new Date(Number(fields.start_time)).toString()}
                 end_time={new Date(Number(fields.end_time)).toString()}
-                image="https://foto.wuestenigel.com/wp-content/uploads/api2/robot-with-stethoscope-on-blue-background.jpeg"
+                image={fields.nft.fields.nft.fields.image_url}
                 num_of_bids={Number(fields.bid_count) || 0}
                 uploader={fields.creator || ""}
               />

@@ -13,6 +13,9 @@ const NotFound = () => {
           under construction! Click on the button below to return to where you
           were coming from!
         </p>
+        <button className="bg-[#006fee] h-[40px] rounded-xl text-white font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-1.5 items-center w-full text-[8px] shadow-md shadow-black/20">
+          <span className="text-[14px]">Back to previous page</span>
+        </button>
       </div>
     </div>
   );

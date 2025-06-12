@@ -4,6 +4,7 @@ import { RouteProps } from "../types";
 // initialization of routes >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 const Home = lazy(() => import("../pages/main/Home"));
 const ViewAuctions = lazy(() => import("../pages/main/auctions"));
+const ViewSingleAuction = lazy(() => import("../pages/main/auctions/view"));
 const CreateAuction = lazy(() => import("../pages/main/createnft"));
 const NotFound = lazy(() => import("../components/not-found"));
 
@@ -19,6 +20,11 @@ export const routes: RouteProps[] = [
     path: "/auctions",
     label: "View all Auctions",
     component: <ViewAuctions />,
+  },
+  {
+    path: "/auctions/:id",
+    label: "View a single auction",
+    component: <ViewSingleAuction />,
   },
 
   {
