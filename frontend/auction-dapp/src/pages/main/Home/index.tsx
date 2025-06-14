@@ -1,14 +1,11 @@
 import { ArrowRight, CirclePlus, Gavel } from "lucide-react";
 import heroImg from "../../../assets/images/hero-img.jpg";
-import { useState } from "react";
 import { AuctionCard } from "../../../components/miscellaneous/auction-card";
 import { auctionData } from "../../../contexts/data";
 import { Link } from "react-router-dom";
 import { NFTCollectionCard } from "../../../components/miscellaneous/nft-collection-card";
-const categories = ["All NFTs", "Digital Art", "Collectibles"];
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState("All NFTs");
   return (
     <div className="container py-10 flex flex-col gap-10 md:gap-20">
       <div className="w-full flex flex-col md:flex-row items-start justify-between gap-10">
@@ -24,12 +21,18 @@ export default function HomePage() {
             ease.
           </p>
           <div className="flex justify-start items-center gap-5">
-            <button className="shadow-lg shadow-gray-800/30 colored-btn">
+            <Link
+              to={"/auctions"}
+              className="shadow-lg shadow-gray-800/30 colored-btn"
+            >
               <Gavel size={16} /> Explore Auctions
-            </button>
-            <button className=" shadow-lg shadow-gray-800/30 shadow-btn">
-              <CirclePlus size={16} /> Create NFT
-            </button>
+            </Link>
+            <Link
+              to={"/create"}
+              className=" shadow-lg shadow-gray-800/30 shadow-btn"
+            >
+              <CirclePlus size={16} /> Create Auction
+            </Link>
           </div>
           <div className="flex justify-start gap-6">
             {[
@@ -65,9 +68,11 @@ export default function HomePage() {
                   Current bid:{" "}
                   <span className="text-gray-900 font-semibold">4.85 SUI</span>
                 </p>
-
               </div>
-              <button className="shadow-lg shadow-gray-800/30 colored-btn text-sm">
+              <button
+                className="shadow-lg shadow-gray-800/30 colored-btn text-sm cursor-auto"
+                disabled
+              >
                 <Gavel size={16} /> Place Bid
               </button>
             </div>
@@ -84,7 +89,7 @@ export default function HomePage() {
               Discover the most sought-after digital collectibles
             </p>
           </div>
-          <div className="inline-flex bg-gray-100 rounded-full p-1 gap-1">
+          {/* <div className="inline-flex bg-gray-100 rounded-full p-1 gap-1">
             {categories.map((category) => (
               <button
                 key={category}
@@ -99,7 +104,7 @@ export default function HomePage() {
                 {category}
               </button>
             ))}
-          </div>
+          </div> */}
         </div>
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {auctionData.slice(0, 8).map((data, index) => (

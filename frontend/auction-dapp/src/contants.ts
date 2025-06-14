@@ -1,11 +1,13 @@
 // Package IDs for different networks
 export const TESTNET_PACKAGE_ID = "";
-export const DEVNET_PACKAGE_ID = "0x506a41955ff70b2c7d1b0b38f3bf79fc97a3dc6831b46e1bd23093ac4abbcba4";
+export const DEVNET_PACKAGE_ID =
+  "0x26b97dade78d5b96fb54b224e621ce93efad01b43b0a49e525146caad49aa201";
 export const MAINNET_PACKAGE_ID = "0x0"; // Replace with actual package ID when deploying to mainnet
 
 // Admin capability IDs
 export const TESTNET_AUCTION_HOUSE_CAP = "";
-export const DEVNET_AUCTION_HOUSE_CAP = "0x1cb5d72193c1da7469cf196c4372238b78aa368cefed048cf3c42477e01ec4ef";
+export const DEVNET_AUCTION_HOUSE_CAP =
+  "0xff8a50279f04a5a23714b8819da23fe62ba1216cbbcbbbfed0ed41e3ae07270f";
 export const MAINNET_AUCTION_HOUSE_CAP = "0x234";
 
 // Super admin capability IDs
@@ -17,5 +19,6 @@ export const MAINNET_AUCTION_HOUSE_CAP = "0x234";
 // IMPORTANT: If your proposals don't show on the dashboard, this ID might be incorrect.
 // Check Sui Explorer for the actual dashboard object ID by searching for dashboard::Dashboard
 export const TESTNET_AUCTION_REGISTRY_ID = ""; // Verify this matches the actual deployed dashboard ID on testnet
-export const DEVNET_AUCTION_REGISTRY_ID = "0xfb1f3502318d4490df3a584d2358bbd093395c643f3f1f989048753cb645f600"; // Fixed devnet dashboard ID
+export const DEVNET_AUCTION_REGISTRY_ID =
+  "0x68f2eed22fa1b44ab7d219f4b4ca53e4ae7931fbddc49b19e70b0d215a772a9b"; // Fixed devnet dashboard ID
 export const MAINNET_AUCTION_REGISTRY_ID = "0x0"; // Replace with actual mainnet dashboard ID when deploying
