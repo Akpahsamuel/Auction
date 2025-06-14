@@ -1,25 +1,68 @@
-@import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap");
+@import "tailwindcss";
 
-body {
-  font-family: "Raleway", sans-serif !important;
-}
 @layer base {
   body {
-    @apply bg-white dark:bg-blue-950;
+    font-family: "Raleway", sans-serif !important;
+    background-color: white;
   }
+  body.dark {
+    background-color: rgb(30 58 138);
+  }
+}
 
+@layer components {
   .colored-btn {
-    @apply bg-[#006fee] !px-5 !py-3 rounded-2xl text-white font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-2 items-center;
+    background-color: #006fee;
+    padding: 0.75rem 1.25rem;
+    border-radius: 1rem;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    align-items: center;
   }
+  .colored-btn:hover {
+    opacity: 0.8;
+  }
+  
   .shadow-btn {
-    @apply text-[#006fee] !px-5 !py-3 rounded-2xl bg-[#006fee]/20    font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-2 items-center;
+    color: #006fee;
+    padding: 0.75rem 1.25rem;
+    border-radius: 1rem;
+    background-color: rgba(0, 111, 238, 0.2);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    align-items: center;
   }
+  .shadow-btn:hover {
+    opacity: 0.8;
+  }
+  
   .gradient-text {
-    @apply bg-gradient-to-r from-[#006fee] to-[#6020A0] text-transparent bg-clip-text;
+    background: linear-gradient(to right, #006fee, #6020A0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
+  
   .input-style {
-    @apply w-full px-3 py-3 rounded-lg border border-gray-300 !mt-2 focus:outline-none focus:border-[#6020A0];
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    margin-top: 0.5rem;
+  }
+  .input-style:focus {
+    outline: none;
+    border-color: #6020A0;
   }
 }
 
@@ -30,5 +73,5 @@ body {
 }
 
 button:active {
-  scale: 0.95;
+  transform: scale(0.95);
 }
