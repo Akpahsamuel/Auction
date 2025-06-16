@@ -25,6 +25,7 @@ module auct::auction_house {
     const PERCENTAGE_BASE: u64 = 100;
     const MIN_BID_INCREMENT: u64 = 1_000_000; // 0.001 SUI minimum increment
     const MIST_PER_SUI: u64 = 1_000_000_000; // 1 SUI = 1,000,000,000 MIST
+    const CLAIM_GRACE_PERIOD: u64 = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
     // Auction status enum
     public enum AuctionStatus has copy, drop, store {
@@ -124,6 +125,14 @@ module auct::auction_house {
         winner: address,
         final_amount: u64,
         fee_collected: u64,
+    }
+
+    public struct CreatorClaimedProceeds has copy, drop {
+        auction_id: object::ID,
+        creator: address,
+        amount_claimed: u64,
+        fee_collected: u64,
+        grace_period_expired: bool,
     }
 
     public struct BidderLeaderboard has copy, drop {
@@ -322,54 +331,43 @@ module auct::auction_house {
         nft
     }
 
-    // End an auction and transfer the NFT to the highest bidder
-    public entry fun end_auction<T: key + store>(
-        auction: &mut Auction<T>,
-        registry: &mut AuctionRegistry,
-        clock: &Clock,
-        _ctx: &mut TxContext
-    ) {
+    // Helper function to check if auction can be ended (NOT an entry function)
+    fun can_end_auction<T: key + store>(auction: &Auction<T>, clock: &Clock): bool {
         let current_time = clock::timestamp_ms(clock);
-        
-        // Only check if auction end time has passed
-        assert!(current_time >= auction.end_time, EAuctionStillActive);
-
-        // Update status
-        auction.status = AuctionStatus::Ended;
-        
-        // Update registry
-        let auction_id = object::id(auction);
-        *table::borrow_mut(&mut registry.auctions, auction_id) = false;
-
-        // We need to consume the auction to extract the NFT
-        // This is a limitation - we'll need to restructure this
-        // For now, let's emit the event without transferring the NFT
-        // The NFT transfer will need to be done in a separate claim function
-
-        // Emit event
-        event::emit(AuctionEnded {
-            auction_id,
-            winner: auction.highest_bidder,
-            winning_bid: auction.current_bid,
-            total_bids: auction.bid_count,
-        });
+        current_time >= auction.end_time && matches(&auction.status, &AuctionStatus::Active)
     }
 
-    // Claim the NFT after auction ends (called by winner)
+    // Claim the NFT after auction ends (called by winner) - This atomically ends and claims
     public entry fun claim_nft<T: key + store>(
         auction: Auction<T>,
+        registry: &mut AuctionRegistry,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let claimer = tx_context::sender(ctx);
         
-        // Only the highest bidder can claim
-        assert!(claimer == auction.highest_bidder, ENotHighestBidder);
-        assert!(matches(&auction.status, &AuctionStatus::Ended), EAuctionStillActive);
+        // Check if auction can be ended (time-based check)
+        assert!(can_end_auction(&auction, clock), EAuctionStillActive);
+        
+        // Only the highest bidder can claim (but only if there were bids)
+        if (auction.bid_count > 0) {
+            assert!(claimer == auction.highest_bidder, ENotHighestBidder);
+        } else {
+            // If no bids, only creator can claim back their NFT
+            assert!(claimer == auction.creator, ENotAuctionCreator);
+        };
 
-        // Extract creator before destructuring
+        // Extract values before destructuring
         let creator = auction.creator;
+        let auction_id = object::id(&auction);
+        let current_bid = auction.current_bid;
+        let highest_bidder = auction.highest_bidder;
+        let bid_count = auction.bid_count;
 
-        // Extract the NFT and transfer to winner
+        // Update registry to mark auction as inactive
+        *table::borrow_mut(&mut registry.auctions, auction_id) = false;
+
+        // Extract the NFT and handle payments
         let Auction { 
             id, 
             creator: _, 
@@ -377,7 +375,7 @@ module auct::auction_house {
             description: _, 
             starting_bid: _, 
             current_bid: _, 
-            highest_bidder, 
+            highest_bidder: _, 
             start_time: _, 
             end_time: _, 
             status: _, 
@@ -387,10 +385,51 @@ module auct::auction_house {
             bidder_info: _, 
             unique_bidders: _,
             stored_bids: mut stored_bids,
-            highest_bid_balance,
+            highest_bid_balance: mut highest_bid_balance,
         } = auction;
         
-        // Handle remaining balances - refund any stored bids
+        // Handle payment and fees if there were bids
+        if (bid_count > 0) {
+            // Calculate 1% fee
+            let total_amount = current_bid;
+            let fee_amount = (total_amount * FEE_PERCENTAGE) / PERCENTAGE_BASE;
+            let creator_amount = total_amount - fee_amount;
+
+            // Process payment to creator and fees to registry
+            if (balance::value(&highest_bid_balance) > 0) {
+                let fee_balance = balance::split(&mut highest_bid_balance, fee_amount);
+                
+                // Send creator their proceeds
+                let creator_coin = coin::from_balance(highest_bid_balance, ctx);
+                transfer::public_transfer(creator_coin, creator);
+                
+                // Store fees in registry
+                balance::join(&mut registry.fee_balance, fee_balance);
+
+                // Emit claimed event
+                event::emit(AuctionClaimed {
+                    auction_id,
+                    winner: highest_bidder,
+                    final_amount: creator_amount,
+                    fee_collected: fee_amount,
+                });
+            } else {
+                balance::destroy_zero(highest_bid_balance);
+            };
+
+            // Emit auction ended event
+            event::emit(AuctionEnded {
+                auction_id,
+                winner: highest_bidder,
+                winning_bid: current_bid,
+                total_bids: bid_count,
+            });
+        } else {
+            // No bids case - just destroy the empty balance
+            balance::destroy_zero(highest_bid_balance);
+        };
+
+        // Handle remaining balances - refund any stored bids (should be empty in this design)
         let bidders = vec_map::keys(&stored_bids);
         let mut i = 0;
         let len = vector::length(&bidders);
@@ -410,58 +449,146 @@ module auct::auction_house {
         // Destroy empty stored_bids map
         vec_map::destroy_empty(stored_bids);
         
-        // Handle highest bid balance - this should go to the auction creator
-        if (balance::value(&highest_bid_balance) > 0) {
-            let payment_coin = coin::from_balance(highest_bid_balance, ctx);
-            transfer::public_transfer(payment_coin, creator);
-        } else {
-            balance::destroy_zero(highest_bid_balance);
-        };
-        
         object::delete(id);
         let extracted_nft = extract_nft(nft);
-        transfer::public_transfer(extracted_nft, highest_bidder);
+        transfer::public_transfer(extracted_nft, claimer);
     }
 
-    // Claim auction proceeds (for auction creator)
-    public entry fun claim_proceeds<T: key + store>(
+    // Claim proceeds as auction creator after grace period (if winner hasn't claimed)
+    public entry fun claim_creator_proceeds<T: key + store>(
         auction: &mut Auction<T>,
         registry: &mut AuctionRegistry,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
+        let current_time = clock::timestamp_ms(clock);
         let claimer = tx_context::sender(ctx);
         
-        // Only auction creator can claim
+        // Only auction creator can call this
         assert!(claimer == auction.creator, ENotAuctionCreator);
-        assert!(matches(&auction.status, &AuctionStatus::Ended), EAuctionStillActive);
+        
+        // Auction must be ended and past grace period
+        assert!(current_time >= auction.end_time, EAuctionStillActive);
+        assert!(current_time >= auction.end_time + CLAIM_GRACE_PERIOD, EAuctionStillActive);
+        
+        // There must be bids to claim proceeds from
+        assert!(auction.bid_count > 0, EBidTooLow);
+        
+        // There must be funds in the highest bid balance
+        assert!(balance::value(&auction.highest_bid_balance) > 0, EInsufficientPayment);
 
         // Calculate 1% fee
         let total_amount = auction.current_bid;
         let fee_amount = (total_amount * FEE_PERCENTAGE) / PERCENTAGE_BASE;
         let creator_amount = total_amount - fee_amount;
 
-        // Extract the highest bid balance
-        assert!(balance::value(&auction.highest_bid_balance) >= total_amount, EInsufficientPayment);
+        // Extract payment and fees
+        let fee_balance = balance::split(&mut auction.highest_bid_balance, fee_amount);
+        let creator_balance = balance::withdraw_all(&mut auction.highest_bid_balance);
         
-        let mut total_balance = balance::withdraw_all(&mut auction.highest_bid_balance);
-        let fee_balance = balance::split(&mut total_balance, fee_amount);
-        
-        // Send creator their proceeds (total amount minus fees)
-        let creator_coin = coin::from_balance(total_balance, ctx);
+        // Send creator their proceeds
+        let creator_coin = coin::from_balance(creator_balance, ctx);
         transfer::public_transfer(creator_coin, auction.creator);
         
-        // Store fees in registry for later collection by treasury
+        // Store fees in registry
         balance::join(&mut registry.fee_balance, fee_balance);
 
-        // Update auction status
+        // Update auction status to claimed
         auction.status = AuctionStatus::Claimed;
 
-        // Emit event
-        event::emit(AuctionClaimed {
+        // Emit event indicating creator claimed proceeds (NFT still with winner)
+        event::emit(CreatorClaimedProceeds {
             auction_id: object::id(auction),
-            winner: auction.highest_bidder,
-            final_amount: creator_amount,
+            creator: auction.creator,
+            amount_claimed: creator_amount,
             fee_collected: fee_amount,
+            grace_period_expired: true,
+        });
+    }
+
+    // Claim NFT as winner after creator has already claimed proceeds
+    public entry fun claim_nft_after_creator_claim<T: key + store>(
+        auction: Auction<T>,
+        registry: &mut AuctionRegistry,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let current_time = clock::timestamp_ms(clock);
+        let claimer = tx_context::sender(ctx);
+        
+        // Check if auction can be ended (time-based check)
+        assert!(current_time >= auction.end_time, EAuctionStillActive);
+        
+        // Only the highest bidder can claim
+        assert!(auction.bid_count > 0, EBidTooLow);
+        assert!(claimer == auction.highest_bidder, ENotHighestBidder);
+        
+        // Auction must be in claimed status (creator already claimed proceeds)
+        assert!(matches(&auction.status, &AuctionStatus::Claimed), EAuctionStillActive);
+
+        // Extract values before destructuring
+        let auction_id = object::id(&auction);
+        let highest_bidder = auction.highest_bidder;
+        let current_bid = auction.current_bid;
+        let bid_count = auction.bid_count;
+
+        // Update registry to mark auction as inactive
+        *table::borrow_mut(&mut registry.auctions, auction_id) = false;
+
+        // Extract the NFT - payment already handled
+        let Auction { 
+            id, 
+            creator: _, 
+            title: _, 
+            description: _, 
+            starting_bid: _, 
+            current_bid: _, 
+            highest_bidder: _, 
+            start_time: _, 
+            end_time: _, 
+            status: _, 
+            bid_count: _, 
+            nft, 
+            bid_history: _, 
+            bidder_info: _, 
+            unique_bidders: _,
+            stored_bids: mut stored_bids,
+            highest_bid_balance, // Should be empty now
+        } = auction;
+        
+        // Clean up any remaining balances (should be empty)
+        balance::destroy_zero(highest_bid_balance);
+
+        // Handle any remaining stored bids (should be empty in this design)
+        let bidders = vec_map::keys(&stored_bids);
+        let mut i = 0;
+        let len = vector::length(&bidders);
+        
+        while (i < len) {
+            let bidder_addr = *vector::borrow(&bidders, i);
+            let (_, balance) = vec_map::remove(&mut stored_bids, &bidder_addr);
+            if (balance::value(&balance) > 0) {
+                let refund_coin = coin::from_balance(balance, ctx);
+                transfer::public_transfer(refund_coin, bidder_addr);
+            } else {
+                balance::destroy_zero(balance);
+            };
+            i = i + 1;
+        };
+        
+        // Destroy empty stored_bids map
+        vec_map::destroy_empty(stored_bids);
+        
+        object::delete(id);
+        let extracted_nft = extract_nft(nft);
+        transfer::public_transfer(extracted_nft, claimer);
+
+        // Emit auction ended event
+        event::emit(AuctionEnded {
+            auction_id,
+            winner: highest_bidder,
+            winning_bid: current_bid,
+            total_bids: bid_count,
         });
     }
 
@@ -662,6 +789,34 @@ module auct::auction_house {
         } else {
             auction.end_time - current_time
         }
+    }
+
+    // Check if creator can claim proceeds (grace period has passed)
+    public fun can_creator_claim_proceeds<T: key + store>(auction: &Auction<T>, clock: &Clock): bool {
+        let current_time = clock::timestamp_ms(clock);
+        current_time >= auction.end_time + CLAIM_GRACE_PERIOD && 
+        auction.bid_count > 0 && 
+        matches(&auction.status, &AuctionStatus::Active) &&
+        balance::value(&auction.highest_bid_balance) > 0
+    }
+
+    // Get time remaining in grace period for NFT claim
+    public fun get_grace_period_remaining<T: key + store>(auction: &Auction<T>, clock: &Clock): u64 {
+        let current_time = clock::timestamp_ms(clock);
+        let grace_end_time = auction.end_time + CLAIM_GRACE_PERIOD;
+        
+        if (current_time >= grace_end_time) {
+            0
+        } else {
+            grace_end_time - current_time
+        }
+    }
+
+    // Check if winner can still claim NFT after creator claimed proceeds
+    public fun can_winner_claim_after_creator<T: key + store>(auction: &Auction<T>, clock: &Clock): bool {
+        let current_time = clock::timestamp_ms(clock);
+        current_time >= auction.end_time && 
+        matches(&auction.status, &AuctionStatus::Claimed)
     }
 
     // Emergency functions
