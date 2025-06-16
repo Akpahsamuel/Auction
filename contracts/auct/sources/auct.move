@@ -25,7 +25,7 @@ module auct::auction_house {
     const PERCENTAGE_BASE: u64 = 100;
     const MIN_BID_INCREMENT: u64 = 1_000_000; // 0.001 SUI minimum increment
     const MIST_PER_SUI: u64 = 1_000_000_000; // 1 SUI = 1,000,000,000 MIST
-    const CLAIM_GRACE_PERIOD: u64 = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+    const CLAIM_GRACE_PERIOD: u64 = 30 * 60 * 1000; // 30 minutes in milliseconds
 
     // Auction status enum
     public enum AuctionStatus has copy, drop, store {
