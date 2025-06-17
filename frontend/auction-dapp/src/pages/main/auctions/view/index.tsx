@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAuctionHook } from "../../../../hooks/use-create-auction";
 import { useBidHook } from "../../../../hooks/use-bid";
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Clock, Trophy, Gavel, AlertCircle, CheckCircle2, Coins, User, Calendar, Hash, X } from "lucide-react";
+import { Clock, Trophy, Gavel, AlertCircle, CheckCircle2, Coins, User, Calendar, Hash, X, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
 import { formatMistAsSui } from "../../../../utils/currency";
 
@@ -15,6 +15,7 @@ const Index = () => {
   const [isPlacingBid, setIsPlacingBid] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -25,6 +26,16 @@ const Index = () => {
   const { getAuctionDetailById } = useAuctionHook();
   const { placeBid, claimNft, claimNftAfterCreatorClaim, claimCreatorProceeds, cancelAuction } = useBidHook();
   const currentAccount = useCurrentAccount();
+
+  // Manual refresh handler
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    toast.info("Reloading page...");
+    
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
 
   useEffect(() => {
     const fetchAuctionDetail = async () => {
@@ -108,12 +119,12 @@ const Index = () => {
       await placeBid(id, bidValue, nftType);
       setBidAmount("");
       
-      // Refresh auction data after successful bid
-      console.log("Refreshing auction data after successful bid...");
-      const updatedData = await getAuctionDetailById(id);
-      setAuctionData(updatedData);
-      
+      // Reload page after successful bid
       toast.success(`Bid of ${bidValue} SUI placed successfully!`);
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error("Failed to place bid:", error);
       toast.error(`Failed to place bid: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -172,12 +183,12 @@ const Index = () => {
         await claimNft(id, nftType);
       }
       
-      // Refresh auction data after successful claim
-      console.log("Refreshing auction data after successful claim...");
-      const updatedData = await getAuctionDetailById(id);
-      setAuctionData(updatedData);
-      
+      // Reload page after successful claim
       toast.success("NFT claimed successfully!");
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error("Failed to claim NFT:", error);
       toast.error(`Failed to claim NFT: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -211,11 +222,12 @@ const Index = () => {
       
       await claimCreatorProceeds(id, nftType);
       
-      // Refresh auction data after successful claim
-      const updatedData = await getAuctionDetailById(id);
-      setAuctionData(updatedData);
-      
+      // Reload page after successful claim
       toast.success("Proceeds claimed successfully!");
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error("Failed to claim proceeds:", error);
       toast.error(`Failed to claim proceeds: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -238,14 +250,17 @@ const Index = () => {
     try {
       const nftType = extractNftType(auctionData);
       await cancelAuction(id, nftType);
+      
+      toast.success("Auction cancelled successfully!");
+      
       // Note: After successful cancellation, the auction object is destroyed,
-      // so we might want to redirect the user or show a success message
-      // For now, we'll try to refresh but expect it to fail gracefully
+      // so we redirect the user after a short delay to show the success message
       setTimeout(() => {
         window.location.href = '/auctions'; // Redirect to auctions list
       }, 2000);
     } catch (error) {
       console.error("Failed to cancel auction:", error);
+      toast.error(`Failed to cancel auction: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsCanceling(false);
     }
@@ -543,12 +558,22 @@ const Index = () => {
                 </div>
               )}
             </div>
-            <button
-              onClick={handleDebugAuction}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-            >
-              Debug Info
-            </button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+              <button
+                onClick={handleDebugAuction}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+              >
+                Debug Info
+              </button>
+            </div>
           </div>
           
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
