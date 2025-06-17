@@ -6,6 +6,7 @@ const Home = lazy(() => import("../pages/main/Home"));
 const ViewAuctions = lazy(() => import("../pages/main/auctions"));
 const ViewSingleAuction = lazy(() => import("../pages/main/auctions/view"));
 const CreateAuction = lazy(() => import("../pages/main/createnft"));
+const AdminPage = lazy(() => import("../pages/main/admin"));
 const NotFound = lazy(() => import("../components/not-found"));
 
 // declaration of all routes >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -31,6 +32,12 @@ export const routes: RouteProps[] = [
     path: "/create",
     label: "Creae NFT",
     component: <CreateAuction />,
+  },
+
+  {
+    path: "/admin",
+    label: "Admin Panel",
+    component: <AdminPage />,
   },
 
   {

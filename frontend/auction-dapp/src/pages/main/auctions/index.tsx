@@ -7,24 +7,76 @@ import { Gavel } from "lucide-react";
 import { Button, DropdownMenu } from "@radix-ui/themes";
 import { Link } from "react-router-dom";
 import { useAuctionHook } from "../../../hooks/use-create-auction";
+import { safeMistToSui } from "../../../utils/currency";
 
 const categories = ["All NFTs", "Digital Art", "Collectibles"];
+
 const ViewAuctions = () => {
   const [activeTab, setActiveTab] = useState("All NFTs");
   const [auctions, setAuctions] = useState<SuiObjectResponse[]>([]);
+  const [loading, setLoading] = useState(false);
   const { getAllAuctionsById } = useAuctionHook();
 
   const getAllAuctions = async () => {
-    const response = await getAllAuctionsById();
-    if (response) {
-      console.log(response);
-      setAuctions(response);
+    setLoading(true);
+    try {
+      const response = await getAllAuctionsById();
+      if (response) {
+        console.log("Active auctions:", response);
+        setAuctions(response);
+      }
+    } catch (error) {
+      console.error("Error fetching auctions:", error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const extractNftType = (auctionData: SuiObjectResponse) => {
+    if (auctionData?.data?.type) {
+      const typeString = auctionData.data.type;
+      const match = typeString.match(/<(.+)>/);
+      return match ? match[1] : "";
+    }
+    return "";
+  };
+
+  const handleCancelSuccess = () => {
+    // Refresh the auctions list after successful cancellation
+    getAllAuctions();
   };
 
   useEffect(() => {
     getAllAuctions();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="container py-10 flex flex-col gap-10 md:gap-20">
+        <div className="w-full flex flex-col items-start justify-start gap-8">
+          <div className="w-full flex flex-col justify-between md:flex-row gap-6 md:items-center">
+            <div>
+              <p className=" font-semibold text-3xl">
+                <span className="gradient-text">Active</span> Auctions
+              </p>
+              <p className="text-gray-500">
+                Discover the most sought-after digital collectibles
+              </p>
+            </div>
+            <Link
+              to={"/create"}
+              className="shadow-lg shadow-gray-800/30 colored-btn"
+            >
+              <Gavel size={16} /> Create Auction
+            </Link>
+          </div>
+          <div className="flex justify-center items-center w-full h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-10 flex flex-col gap-10 md:gap-20">
@@ -32,7 +84,7 @@ const ViewAuctions = () => {
         <div className="w-full flex flex-col justify-between md:flex-row gap-6 md:items-center">
           <div>
             <p className=" font-semibold text-3xl">
-              <span className="gradient-text">Live</span> Auctions
+              <span className="gradient-text">Active</span> Auctions
             </p>
             <p className="text-gray-500">
               Discover the most sought-after digital collectibles
@@ -45,6 +97,7 @@ const ViewAuctions = () => {
             <Gavel size={16} /> Create Auction
           </Link>
         </div>
+
         <div className="w-full flex flex-col-reverse md:flex-row gap-5 items-center justify-between">
           <div className="max-w-full min-w-fit inline-flex bg-gray-100 rounded-full p-1 gap-1">
             {categories.map((category) => (
@@ -89,43 +142,53 @@ const ViewAuctions = () => {
             </DropdownMenu.Root>
           </div>
         </div>
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {auctions?.map((data, index) => {
-            const content = data.data?.content;
-            if (!content || !("fields" in content))
-              return (
-                <div className="flex justify-center items-center w-full h-full">
-                  <div className="py-10 max-w-[600px] flex flex-col gap-4 items-center">
-                    <IoMdBasket size={160} className="text-gray-500" />
-                    <p className="text-3xl font-semibold">
-                      Ooops!!! Nothing is here yet!
-                    </p>
-                    <p className="text-gray-500 text-center">
-                      There are currently no created auction yet, click on the
-                      create auction button to place an item on auction!
-                    </p>
-                  </div>
-                </div>
-              );
+        
+        {auctions.length === 0 ? (
+          <div className="flex justify-center items-center w-full h-full">
+            <div className="py-10 max-w-[600px] flex flex-col gap-4 items-center">
+              <IoMdBasket size={160} className="text-gray-500" />
+              <p className="text-3xl font-semibold">
+                Ooops!!! Nothing is here yet!
+              </p>
+              <p className="text-gray-500 text-center">
+                There are currently no active auctions yet, click on the create auction button to place an item on auction!
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {auctions?.map((data, index) => {
+              const content = data.data?.content;
+              if (!content || !("fields" in content)) return null;
 
-            const fields = content.fields as any;
-            console.log("content", content);
-            console.log("fields", fields);
-            return (
-              <AuctionCard
-                id={fields.id.id}
-                key={index}
-                title={fields.title || ""}
-                current_bid={Number(fields.current_bid) / 1_000_000_000}
-                start_time={new Date(Number(fields.start_time)).toString()}
-                end_time={new Date(Number(fields.end_time)).toString()}
-                image={fields.nft.fields.nft.fields.image_url}
-                num_of_bids={Number(fields.bid_count) || 0}
-                uploader={fields.creator || ""}
-              />
-            );
-          })}
-        </div>
+              const fields = content.fields as any;
+              console.log("content", content);
+              console.log("fields", fields);
+              
+              // Handle active auction data structure
+              console.log("Active auction fields:", fields);
+              
+              // Use the utility function to safely convert current_bid from MIST to SUI
+              const currentBidSui = safeMistToSui(fields.current_bid, 0);
+              
+              return (
+                <AuctionCard
+                  id={fields.id.id}
+                  key={index}
+                  title={fields.title || ""}
+                  current_bid={currentBidSui}
+                  start_time={new Date(Number(fields.start_time)).toString()}
+                  end_time={new Date(Number(fields.end_time)).toString()}
+                  image={fields.nft?.fields?.nft?.fields?.image_url || "/api/placeholder/300/300"}
+                  num_of_bids={Number(fields.bid_count) || 0}
+                  uploader={fields.creator || ""}
+                  nftType={extractNftType(data)}
+                  onCancelSuccess={handleCancelSuccess}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -10,8 +10,12 @@ export type Auction = {
   title: string;
   description: string;
   startingBid: number;
-  durationMs: number;
+  endTimeMs: number; // Absolute timestamp in milliseconds
   nftId: string;
   startTime?: number;
   endTime?: number;
+  // NFT metadata for completed auction storage
+  nftName?: string;
+  nftDescription?: string;
+  nftImageUrl?: string;
 };
