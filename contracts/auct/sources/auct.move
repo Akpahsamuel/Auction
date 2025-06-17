@@ -63,6 +63,12 @@ module auct::auction_house {
         stored_bids: VecMap<address, Balance<SUI>>,
         // Current highest bid balance
         highest_bid_balance: Balance<SUI>,
+        // Store NFT metadata for later use in auction history
+        nft_id: object::ID,
+        nft_type: String,
+        nft_name: String,
+        nft_description: String,
+        nft_image_url: String,
     }
 
     // Bid history entry
@@ -94,6 +100,12 @@ module auct::auction_house {
         end_time: u64,
         completion_time: u64,
         total_bids: u64,
+        // NFT metadata for easier frontend querying
+        nft_id: object::ID,
+        nft_type: String,
+        nft_name: String,
+        nft_description: String,
+        nft_image_url: String,
         // Bid tracking (preserved for history)
         bid_history: vector<BidEntry>,
         bidder_info: VecMap<address, BidderInfo>,
@@ -183,11 +195,17 @@ module auct::auction_house {
         description: vector<u8>,
         starting_bid_mist: u64, // Now accepts MIST directly from frontend
         auction_end: u64,
+        nft_name: vector<u8>,
+        nft_description: vector<u8>,
+        nft_image_url: vector<u8>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         let current_time = clock::timestamp_ms(clock);
         let end_time =  auction_end;
+
+        // Get NFT ID before wrapping
+        let nft_id = object::id(&nft);
 
         // Wrap the NFT
         let nft_wrapper = NFTWrapper {
@@ -215,6 +233,12 @@ module auct::auction_house {
             unique_bidders: 0,
             stored_bids: vec_map::empty<address, Balance<SUI>>(),
             highest_bid_balance: balance::zero<SUI>(),
+            // Store NFT metadata for later use in auction history
+            nft_id,
+            nft_type: string::utf8(b"Generic NFT"), // Will be set dynamically in frontend
+            nft_name: string::utf8(nft_name),
+            nft_description: string::utf8(nft_description),
+            nft_image_url: string::utf8(nft_image_url),
         };
 
         let auction_id = object::id(&auction);
@@ -397,6 +421,11 @@ module auct::auction_house {
             unique_bidders,
             stored_bids: mut stored_bids,
             highest_bid_balance: mut highest_bid_balance,
+            nft_id,
+            nft_type,
+            nft_name,
+            nft_description,
+            nft_image_url,
         } = auction;
         
         // Handle payment and fees if there were bids
@@ -477,6 +506,11 @@ module auct::auction_house {
             bid_history,
             bidder_info,
             unique_bidders,
+            nft_id,
+            nft_type,
+            nft_name,
+            nft_description,
+            nft_image_url,
         };
 
         let history_id = object::id(&auction_history);
@@ -575,7 +609,7 @@ module auct::auction_house {
         // Update registry to mark auction as inactive
         *table::borrow_mut(&mut registry.auctions, auction_id) = false;
 
-        // Extract the auction data - payment already handled
+        // Extract the auction data and handle payments
         let Auction { 
             id, 
             creator, 
@@ -593,7 +627,12 @@ module auct::auction_house {
             bidder_info, 
             unique_bidders,
             stored_bids: mut stored_bids,
-            highest_bid_balance, // Should be empty now
+            highest_bid_balance: mut highest_bid_balance,
+            nft_id,
+            nft_type,
+            nft_name,
+            nft_description,
+            nft_image_url,
         } = auction;
         
         // Clean up any remaining balances (should be empty)
@@ -636,6 +675,11 @@ module auct::auction_house {
             bid_history,
             bidder_info,
             unique_bidders,
+            nft_id,
+            nft_type,
+            nft_name,
+            nft_description,
+            nft_image_url,
         };
 
         let history_id = object::id(&auction_history);
@@ -898,6 +942,11 @@ module auct::auction_house {
             unique_bidders: _,
             stored_bids,
             highest_bid_balance,
+            nft_id: _,
+            nft_type: _,
+            nft_name: _,
+            nft_description: _,
+            nft_image_url: _,
         } = auction;
         
         // Clean up any balances (should be empty since no bids)
@@ -928,6 +977,44 @@ module auct::auction_house {
             history.completion_time,
             history.total_bids,
             history.unique_bidders
+        )
+    }
+
+    // Get NFT metadata from auction history
+    public fun get_auction_history_nft_metadata(history: &AuctionHistory): (
+        object::ID, String, String, String, String
+    ) {
+        (
+            history.nft_id,
+            history.nft_type,
+            history.nft_name,
+            history.nft_description,
+            history.nft_image_url
+        )
+    }
+
+    // Get complete auction history info including NFT metadata
+    public fun get_complete_auction_history_info(history: &AuctionHistory): (
+        object::ID, String, String, u64, u64, address, u64, u64, u64, u64, u64,
+        object::ID, String, String, String, String
+    ) {
+        (
+            history.original_auction_id,
+            history.title,
+            history.description,
+            history.starting_bid,
+            history.final_bid,
+            history.winner,
+            history.start_time,
+            history.end_time,
+            history.completion_time,
+            history.total_bids,
+            history.unique_bidders,
+            history.nft_id,
+            history.nft_type,
+            history.nft_name,
+            history.nft_description,
+            history.nft_image_url
         )
     }
 

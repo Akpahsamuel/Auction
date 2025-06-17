@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAuctionHook } from "../../../../hooks/use-create-auction";
 import { useBidHook } from "../../../../hooks/use-bid";
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Clock, Trophy, Gavel, AlertCircle, CheckCircle2, Timer, Coins, User, Calendar, Hash } from "lucide-react";
+import { Clock, Trophy, Gavel, AlertCircle, CheckCircle2, Coins, User, Calendar, Hash, X } from "lucide-react";
 import { toast } from "react-toastify";
 import { formatMistAsSui } from "../../../../utils/currency";
 
@@ -186,28 +186,19 @@ const Index = () => {
     }
   };
 
-  const handleClaimProceeds = async () => {
+  const handleClaimCreatorProceeds = async () => {
     if (!auctionData || !id) {
       toast.error("Missing auction data for claiming proceeds");
       return;
     }
 
-    // Validate that auction has ended
+    if (!isCurrentUserCreator()) {
+      toast.error("Only the auction creator can claim proceeds");
+      return;
+    }
+
     if (!isAuctionEnded()) {
       toast.error("Cannot claim proceeds: auction has not ended yet");
-      return;
-    }
-
-    // Validate that user is the creator
-    if (!isCurrentUserCreator()) {
-      toast.error("Cannot claim proceeds: you are not the auction creator");
-      return;
-    }
-
-    // Check if there are any bids
-    const auction = auctionData.data.content.fields;
-    if (auction.bid_count === 0) {
-      toast.error("Cannot claim proceeds: no bids were placed on this auction");
       return;
     }
 
@@ -218,22 +209,13 @@ const Index = () => {
         throw new Error("Could not determine NFT type for claiming proceeds");
       }
       
-      console.log("Claiming creator proceeds:", {
-        auctionId: id,
-        nftType,
-        isCreator: isCurrentUserCreator(),
-        isEnded: isAuctionEnded(),
-        bidCount: auction.bid_count
-      });
-      
       await claimCreatorProceeds(id, nftType);
       
       // Refresh auction data after successful claim
-      console.log("Refreshing auction data after successful proceeds claim...");
       const updatedData = await getAuctionDetailById(id);
       setAuctionData(updatedData);
       
-      toast.success("Creator proceeds claimed successfully!");
+      toast.success("Proceeds claimed successfully!");
     } catch (error) {
       console.error("Failed to claim proceeds:", error);
       toast.error(`Failed to claim proceeds: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -296,29 +278,48 @@ const Index = () => {
 
   const isAuctionEnded = () => {
     if (!auctionData?.data?.content?.fields) return false;
-    const endTime = parseInt(auctionData.data.content.fields.end_time);
+    const fields = auctionData.data.content.fields;
+    const endTime = parseInt(fields.end_time);
     return Date.now() > endTime;
   };
 
   const isCurrentUserCreator = () => {
     if (!currentAccount?.address || !auctionData?.data?.content?.fields) return false;
-    return currentAccount.address === auctionData.data.content.fields.creator;
+    const fields = auctionData.data.content.fields;
+    return currentAccount.address === fields.creator;
   };
 
   const isCurrentUserWinner = () => {
     if (!currentAccount?.address || !auctionData?.data?.content?.fields) return false;
-    const highestBidder = auctionData.data.content.fields.highest_bidder;
-    return currentAccount.address === highestBidder;
+    const fields = auctionData.data.content.fields;
+    
+    // For active auctions, check highest_bidder
+    if (!auctionData.isHistory && fields.highest_bidder) {
+      return currentAccount.address === fields.highest_bidder;
+    }
+    
+    // For auction histories, check winner
+    if (auctionData.isHistory && fields.winner) {
+      return currentAccount.address === fields.winner;
+    }
+    
+    return false;
   };
 
   const getCurrentBid = () => {
     if (!auctionData?.data?.content?.fields) return "0";
-    // Both current_bid and starting_bid are now stored in MIST units
-    if (auctionData.data.content.fields.bid_count > 0) {
-      return auctionData.data.content.fields.current_bid;
+    const fields = auctionData.data.content.fields;
+    
+    // For auction histories, use final_bid
+    if (auctionData.isHistory) {
+      return fields.final_bid || "0";
+    }
+    
+    // For active auctions, use current_bid or starting_bid
+    if (fields.bid_count > 0) {
+      return fields.current_bid;
     } else {
-      // starting_bid is already in MIST, so return it directly
-      return auctionData.data.content.fields.starting_bid;
+      return fields.starting_bid;
     }
   };
 
@@ -492,57 +493,131 @@ const Index = () => {
   const auctionEnded = isAuctionEnded();
   const userIsCreator = isCurrentUserCreator();
   const userIsWinner = isCurrentUserWinner();
+  const canCancel = canCancelAuction();
+  const isHistoryView = !!auctionData.isHistory;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center px-4 py-2 bg-white rounded-full shadow-md mb-4">
-            <Gavel className="h-5 w-5 text-blue-600 mr-2" />
-            <span className="text-sm font-medium text-gray-700">Live Auction</span>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+      <div className="container mx-auto px-4 max-w-7xl">
+        {/* Header with status */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={() => window.history.back()}
+                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                ← Back to Auctions
+              </button>
+              {isHistoryView && (
+                <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Completed Auction
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleDebugAuction}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+            >
+              Debug Info
+            </button>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            {auction.title || "Untitled Auction"}
+          
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            {auction.title || "Untitled NFT"}
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            {auction.description || "No description provided"}
+          <p className="text-gray-600 text-lg">
+            {auction.description || "No description available"}
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column - NFT Image and Main Info */}
-          <div className="lg:col-span-1">
-            {/* NFT Image Display */}
-            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden mb-8">
+          {/* Left Column - NFT Image and Details */}
+          <div className="space-y-6">
+            {/* NFT Image */}
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
               <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                <img
-                  src={auction.nft?.fields?.nft?.fields?.image_url || "https://via.placeholder.com/600x600/e5e7eb/6b7280?text=NFT+Image"}
-                  alt={auction.title || "NFT"}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = "https://via.placeholder.com/600x600/e5e7eb/6b7280?text=NFT+Image";
-                  }}
-                />
+                {isHistoryView && auction.nft_image_url ? (
+                  <div className="w-full h-full">
+                    <img 
+                      src={auction.nft_image_url} 
+                      alt={auction.nft_name || "NFT"}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <div className="hidden w-full h-full flex items-center justify-center text-center p-8">
+                      <div>
+                        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                          <span className="text-3xl font-bold text-white">NFT</span>
+                        </div>
+                        <p className="text-gray-600 font-medium">{auction.nft_name || "Digital Collectible"}</p>
+                        <p className="text-sm text-gray-500 mt-1">Unique blockchain asset</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-8">
+                    <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-3xl font-bold text-white">NFT</span>
+                    </div>
+                    <p className="text-gray-600 font-medium">Digital Collectible</p>
+                    <p className="text-sm text-gray-500 mt-1">Unique blockchain asset</p>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* NFT Details Card */}
+            {/* NFT Technical Details */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <Hash className="h-6 w-6 text-indigo-500 mr-2" />
-                NFT Details
+                {isHistoryView ? "Historical " : ""}NFT Details
               </h3>
               
               <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-6">
                 <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">NFT ID</label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      {isHistoryView ? "Original Auction ID" : "NFT ID"}
+                    </label>
                     <div className="bg-white p-3 rounded-lg border">
-                      <p className="text-sm font-mono text-gray-900 break-all">{auction.nft_id}</p>
+                      <p className="text-sm font-mono text-gray-900 break-all">
+                        {isHistoryView ? auction.original_auction_id : auction.nft_id}
+                      </p>
                     </div>
                   </div>
+                  
+                  {isHistoryView && auction.nft_name && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Name</label>
+                      <div className="bg-white p-3 rounded-lg border">
+                        <p className="text-sm text-gray-900">{auction.nft_name}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {isHistoryView && auction.nft_description && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Description</label>
+                      <div className="bg-white p-3 rounded-lg border">
+                        <p className="text-sm text-gray-900">{auction.nft_description}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {isHistoryView && auction.nft_image_url && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Image URL</label>
+                      <div className="bg-white p-3 rounded-lg border">
+                        <p className="text-sm font-mono text-gray-900 break-all">{auction.nft_image_url}</p>
+                      </div>
+                    </div>
+                  )}
                   
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">Creator</label>
@@ -551,10 +626,26 @@ const Index = () => {
                     </div>
                   </div>
                   
+                  {isHistoryView && auction.winner && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">Winner</label>
+                      <div className="bg-white p-3 rounded-lg border">
+                        <p className="text-sm font-mono text-gray-900 break-all">{auction.winner}</p>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Type</label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      {isHistoryView ? "Completion Time" : "NFT Type"}
+                    </label>
                     <div className="bg-white p-3 rounded-lg border">
-                      <p className="text-sm font-mono text-gray-900 break-all">{extractNftType(auctionData)}</p>
+                      <p className="text-sm font-mono text-gray-900 break-all">
+                        {isHistoryView 
+                          ? new Date(parseInt(auction.completion_time)).toLocaleString()
+                          : extractNftType(auctionData)
+                        }
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -563,80 +654,102 @@ const Index = () => {
           </div>
 
           {/* Right Column - Auction Info and Bidding */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Auction Status and Timer Card */}
+          <div className="space-y-6">
+            {/* Auction Status and Time */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className={`p-2 rounded-full ${auctionEnded ? 'bg-red-100' : 'bg-green-100'}`}>
-                    {auctionEnded ? (
-                      <AlertCircle className="h-6 w-6 text-red-600" />
-                    ) : (
-                      <Clock className="h-6 w-6 text-green-600" />
-                    )}
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {isHistoryView ? "Auction Results" : "Current Auction"}
+                </h2>
+                {isHistoryView ? (
+                  <div className="flex items-center text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm font-medium">
+                    <Trophy className="h-4 w-4 mr-1" />
+                    Completed
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Auction Status</h3>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                      auctionEnded ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                    }`}>
-                      {auctionEnded ? 'Ended' : 'Active'}
-                    </span>
+                ) : auctionEnded ? (
+                  <div className="flex items-center text-red-600 bg-red-50 px-3 py-1 rounded-full text-sm font-medium">
+                    <Clock className="h-4 w-4 mr-1" />
+                    Ended
+                  </div>
+                ) : (
+                  <div className="flex items-center text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm font-medium">
+                    <Clock className="h-4 w-4 mr-1" />
+                    Active
+                  </div>
+                )}
+              </div>
+
+              {/* Time Display */}
+              {!isHistoryView && (
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 mb-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-blue-600">{timeLeft.days}</p>
+                      <p className="text-sm text-gray-600">Days</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-purple-600">{timeLeft.hours}</p>
+                      <p className="text-sm text-gray-600">Hours</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-pink-600">{timeLeft.minutes}</p>
+                      <p className="text-sm text-gray-600">Minutes</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-indigo-600">{timeLeft.seconds}</p>
+                      <p className="text-sm text-gray-600">Seconds</p>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-center text-gray-500 mb-1">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    <span className="text-sm">Ends</span>
-                  </div>
-                  <p className="text-sm font-medium text-gray-900">
+              )}
+
+              {/* Start and End Times */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <Calendar className="h-5 w-5 text-gray-500 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-600">
+                    {isHistoryView ? "Started" : "Start Time"}
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    {new Date(parseInt(auction.start_time)).toLocaleString()}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <Calendar className="h-5 w-5 text-gray-500 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-600">
+                    {isHistoryView ? "Ended" : "End Time"}
+                  </p>
+                  <p className="text-sm text-gray-900">
                     {new Date(parseInt(auction.end_time)).toLocaleString()}
                   </p>
                 </div>
               </div>
-
-              {/* Countdown Timer */}
-              {!auctionEnded && (
-                <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-6 text-white">
-                  <div className="flex items-center mb-4">
-                    <Timer className="h-6 w-6 mr-2" />
-                    <h3 className="text-lg font-semibold">Auction Ends In</h3>
-                  </div>
-                  <div className="grid grid-cols-4 gap-4">
-                    {[
-                      { label: 'Days', value: timeLeft.days },
-                      { label: 'Hours', value: timeLeft.hours },
-                      { label: 'Minutes', value: timeLeft.minutes },
-                      { label: 'Seconds', value: timeLeft.seconds }
-                    ].map((item, index) => (
-                      <div key={index} className="text-center">
-                        <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 mb-2">
-                          <div className="text-2xl md:text-3xl font-bold">{item.value.toString().padStart(2, '0')}</div>
-                        </div>
-                        <div className="text-sm opacity-90">{item.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Current Bid Information */}
+            {/* Bid Information */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center">
-                  <p className="text-sm font-medium text-gray-600 mb-2">Current Bid</p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">
+                    {isHistoryView ? "Final Bid" : "Current Bid"}
+                  </p>
                   <p className="text-3xl font-bold text-gray-900">{formatSui(getCurrentBid())} SUI</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-gray-600 mb-2">Min. Increment</p>
-                  <p className="text-xl font-semibold text-gray-700">0.1 SUI</p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">
+                    {isHistoryView ? "Starting Bid" : "Min. Increment"}
+                  </p>
+                  <p className="text-xl font-semibold text-gray-700">
+                    {isHistoryView ? formatSui(auction.starting_bid) + " SUI" : "0.1 SUI"}
+                  </p>
                 </div>
               </div>
               
               <div className="mt-6 grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-purple-600">{auction.bid_count || 0}</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {isHistoryView ? (auction.total_bids || 0) : (auction.bid_count || 0)}
+                  </p>
                   <p className="text-sm text-gray-600">Total Bids</p>
                 </div>
                 <div>
@@ -649,246 +762,250 @@ const Index = () => {
                 </div>
               </div>
 
-              {auction.highest_bidder && (
+              {/* Winner/Bidder Information */}
+              {((isHistoryView && auction.winner) || (!isHistoryView && auction.highest_bidder)) && (
                 <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
                   <div className="flex items-center">
                     <User className="h-4 w-4 text-yellow-600 mr-2" />
-                    <span className="text-sm font-medium text-yellow-800">Leading Bidder:</span>
+                    <span className="text-sm font-medium text-yellow-800">
+                      {isHistoryView ? "Winner:" : "Leading Bidder:"}
+                    </span>
                     <span className="text-sm font-mono text-yellow-900 ml-2">
-                      {auction.highest_bidder.slice(0, 6)}...{auction.highest_bidder.slice(-4)}
+                      {(isHistoryView ? auction.winner : auction.highest_bidder)?.slice(0, 6)}...
+                      {(isHistoryView ? auction.winner : auction.highest_bidder)?.slice(-4)}
                     </span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Bidding Interface */}
-            {!auctionEnded && !userIsCreator && (
+            {/* Bidding Interface - Only for active auctions */}
+            {!isHistoryView && !auctionEnded && !userIsCreator && (
               <div className="bg-white rounded-2xl shadow-xl p-6">
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Gavel className="h-5 w-5 text-blue-600" />
-                      <h3 className="text-lg font-semibold text-gray-900">Place Bid</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Place Your Bid</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="bidAmount" className="block text-sm font-medium text-gray-700 mb-2">
+                      Bid Amount (SUI)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        id="bidAmount"
+                        value={bidAmount}
+                        onChange={(e) => setBidAmount(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder={`Minimum: ${getMinimumBid()} SUI`}
+                        step="0.1"
+                        min={getMinimumBid()}
+                        disabled={auctionEnded || userIsCreator || isHistoryView}
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <img src="/src/assets/icons/sui-icon.png" alt="SUI" className="h-5 w-5" />
+                      </div>
                     </div>
-                    <button className="flex items-center space-x-1 text-blue-600 hover:text-blue-700">
-                      <span className="text-sm">Add to Favorites</span>
-                    </button>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Current minimum bid: {getMinimumBid()} SUI
+                    </p>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-gray-700">Your Bid (SUI)</label>
-                        <span className="text-xs text-gray-500">Min: {getMinimumBid()} SUI</span>
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          value={bidAmount}
-                          onChange={(e) => setBidAmount(e.target.value)}
-                          placeholder={getMinimumBid()}
-                          min={getMinimumBid()}
-                          step="1"
-                          className="w-full px-4 py-4 text-xl font-bold border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        />
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                          <span className="text-xl font-bold text-gray-400">SUI</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={handlePlaceBid}
-                      disabled={isPlacingBid || !bidAmount}
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
-                    >
-                      {isPlacingBid ? (
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                          Placing Bid...
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center">
-                          <Gavel className="h-5 w-5 mr-2" />
-                          Place Bid
-                        </div>
-                      )}
-                    </button>
 
-                    <div className="flex items-center justify-between text-sm text-gray-600">
-                      <div className="flex items-center space-x-4">
-                        <span>142 views</span>
-                        <span>24 favorites</span>
+                  <button
+                    onClick={handlePlaceBid}
+                    disabled={!bidAmount || isPlacingBid || auctionEnded || userIsCreator || isHistoryView}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95"
+                  >
+                    {isPlacingBid ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                        Placing Bid...
                       </div>
-                      <button className="text-blue-600 hover:text-blue-700 flex items-center space-x-1">
-                        <span>Share</span>
+                    ) : auctionEnded ? (
+                      "Auction Ended"
+                    ) : userIsCreator ? (
+                      "Cannot Bid on Own Auction"
+                    ) : isHistoryView ? (
+                      "Auction Completed"
+                    ) : (
+                      "Place Bid"
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons for Creator/Winner */}
+            {!isHistoryView && (userIsCreator || (auctionEnded && userIsWinner)) && (
+              <div className="bg-white rounded-2xl shadow-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  {userIsCreator ? "Creator Actions" : "Winner Actions"}
+                </h3>
+                
+                {/* Creator Actions */}
+                {userIsCreator && (
+                  <div className="space-y-4">
+                    {auctionEnded && auction.bid_count > 0 && !isCreatorAlreadyClaimed() && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-center mb-3">
+                          <Coins className="h-5 w-5 text-green-600 mr-2" />
+                          <span className="font-medium text-green-800">Claim Proceeds Available</span>
+                        </div>
+                        <p className="text-sm text-green-700 mb-3">
+                          Your auction has ended with bids. You can claim the proceeds (minus 1% fee).
+                        </p>
+                        <button
+                          onClick={handleClaimCreatorProceeds}
+                          disabled={isClaiming}
+                          className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isClaiming ? "Claiming..." : "Claim Proceeds"}
+                        </button>
+                      </div>
+                    )}
+                    
+                    {isCreatorAlreadyClaimed() && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center">
+                          <CheckCircle2 className="h-5 w-5 text-blue-600 mr-2" />
+                          <span className="font-medium text-blue-800">Proceeds Claimed</span>
+                        </div>
+                        <p className="text-sm text-blue-700 mt-1">
+                          You have successfully claimed the auction proceeds.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Winner Actions */}
+                {auctionEnded && userIsWinner && (
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-center mb-3">
+                        <Trophy className="h-5 w-5 text-yellow-600 mr-2" />
+                        <span className="font-medium text-yellow-800">Congratulations! You Won</span>
+                      </div>
+                      
+                      <div className="bg-white/60 rounded-lg p-3 mb-4">
+                        <div className="text-sm text-gray-700">
+                          <div className="flex justify-between mb-1">
+                            <span>Winning Bid:</span>
+                            <span className="font-medium">{formatSui(getCurrentBid())} SUI</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Status:</span>
+                            <span className={`font-medium ${isCreatorAlreadyClaimed() ? 'text-green-600' : 'text-orange-600'}`}>
+                              {isCreatorAlreadyClaimed() ? 'Creator Paid' : 'Pending Payment'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm text-yellow-700 mb-3">
+                        {getClaimInfo().explanation}
+                      </p>
+                      
+                      <button
+                        onClick={handleClaimNft}
+                        disabled={isClaiming}
+                        className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-2 px-4 rounded-lg hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      >
+                        {isClaiming ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                            Claiming...
+                          </div>
+                        ) : (
+                          getClaimInfo().text
+                        )}
                       </button>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            {/* Winner Panel */}
-            {auctionEnded && userIsWinner && (
-              <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl shadow-xl p-6 text-white">
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
-                    <Trophy className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold">Congratulations!</h3>
-                  <p className="text-green-100 mt-1">You won this auction!</p>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-4 mb-4">
-                  <p className="text-center text-lg">
-                    Winning bid: <span className="font-bold text-xl">{formatSui(getCurrentBid())} SUI</span>
-                  </p>
-                </div>
-
-                {/* Claim Status Information */}
-                <div className="bg-white/10 rounded-lg p-4 mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Claim Status:</span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      isCreatorAlreadyClaimed() ? 'bg-blue-500/20 text-blue-100' : 'bg-yellow-500/20 text-yellow-100'
-                    }`}>
-                      {isCreatorAlreadyClaimed() ? 'Creator Paid' : 'Pending Payment'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-green-100">
-                    {getClaimInfo().explanation}
-                  </p>
-                </div>
-                
-                <button
-                  onClick={handleClaimNft}
-                  disabled={isClaiming}
-                  className="w-full bg-white text-green-600 py-4 px-6 rounded-lg font-semibold text-lg hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
-                >
-                  {isClaiming ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-green-600 border-t-transparent mr-2"></div>
-                      Claiming...
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <CheckCircle2 className="h-5 w-5 mr-2" />
-                      {getClaimInfo().text}
-                    </div>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {/* Creator Panel */}
-            {auctionEnded && userIsCreator && auction.highest_bidder && (
-              <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl shadow-xl p-6 text-white">
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
-                    <Coins className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold">Auction Ended</h3>
-                  <p className="text-blue-100 mt-1">Your auction was successful!</p>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-4 mb-6">
-                  <p className="text-center text-lg">
-                    Final bid: <span className="font-bold text-xl">{formatSui(getCurrentBid())} SUI</span>
-                  </p>
-                </div>
-                
-                <button
-                  onClick={handleClaimProceeds}
-                  disabled={isClaiming}
-                  className="w-full bg-white text-blue-600 py-4 px-6 rounded-lg font-semibold text-lg hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
-                >
-                  {isClaiming ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent mr-2"></div>
-                      Claiming...
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <Coins className="h-5 w-5 mr-2" />
-                      Claim Proceeds
-                    </div>
-                  )}
-                </button>
-                <p className="text-xs text-blue-100 text-center mt-2">
-                  Available after grace period
-                </p>
-              </div>
-            )}
-
-            {/* Creator Control Panel */}
-            {userIsCreator && !auctionEnded && (
-              <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl shadow-xl p-6 text-white">
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
-                    <User className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold">Your Auction</h3>
-                  <p className="text-yellow-100 mt-1">You cannot bid on your own auction</p>
-                </div>
-                
-                {canCancelAuction() && (
+                {/* Cancellation Option */}
+                {canCancel && (
                   <div className="space-y-4">
-                    <div className="bg-white/10 rounded-lg p-4">
-                      <h4 className="font-semibold mb-2">Cancel Auction</h4>
-                      <p className="text-sm text-yellow-100">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-center mb-3">
+                        <X className="h-5 w-5 text-red-600 mr-2" />
+                        <span className="font-medium text-red-800">Cancel Auction</span>
+                      </div>
+                      <p className="text-sm text-red-700 mb-3">
                         No bids have been placed yet. You can cancel this auction and get your NFT back.
                       </p>
+                      <button
+                        onClick={handleCancelAuction}
+                        disabled={isCanceling}
+                        className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isCanceling ? "Canceling..." : "Cancel Auction"}
+                      </button>
                     </div>
-                    
-                    <button
-                      onClick={handleCancelAuction}
-                      disabled={isCanceling}
-                      className="w-full bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isCanceling ? (
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                          Canceling...
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center">
-                          <AlertCircle className="h-5 w-5 mr-2" />
-                          Cancel Auction
-                        </div>
-                      )}
-                    </button>
-                  </div>
-                )}
-                
-                {auction.bid_count > 0 && (
-                  <div className="bg-white/10 rounded-lg p-4">
-                    <div className="flex items-center mb-2">
-                      <AlertCircle className="h-5 w-5 mr-2" />
-                      <span className="font-semibold">Cannot Cancel</span>
-                    </div>
-                    <p className="text-sm text-yellow-100">
-                      This auction cannot be canceled because bids have been placed.
-                    </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Debug Panel - Development Only */}
-            {true && ( // Set to false in production
-              <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl p-4 mt-6">
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">🔧 Development Tools</h4>
-                <button
-                  onClick={handleDebugAuction}
-                  className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg text-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                >
-                  Debug Auction State
-                </button>
-                <p className="text-xs text-gray-500 mt-2">
-                  Check browser console for debug information
-                </p>
+            {/* Completed Auction Summary */}
+            {isHistoryView && (
+              <div className="bg-white rounded-2xl shadow-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <Trophy className="h-6 w-6 text-green-500 mr-2" />
+                  Auction Completed
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Final Sale Price:</span>
+                        <div className="font-bold text-lg text-green-600">
+                          {formatSui(auction.final_bid)} SUI
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Total Bids:</span>
+                        <div className="font-bold text-lg">
+                          {auction.total_bids || 0}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Winner:</span>
+                        <div className="font-mono text-sm break-all">
+                          {auction.winner ? 
+                            `${auction.winner.slice(0, 8)}...${auction.winner.slice(-8)}` : 
+                            "No winner"
+                          }
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Completed:</span>
+                        <div className="text-sm">
+                          {new Date(parseInt(auction.completion_time)).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {userIsCreator && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center">
+                        <CheckCircle2 className="h-5 w-5 text-blue-600 mr-2" />
+                        <span className="font-medium text-blue-800">You were the creator of this auction</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {userIsWinner && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-center">
+                        <Trophy className="h-5 w-5 text-yellow-600 mr-2" />
+                        <span className="font-medium text-yellow-800">You won this auction!</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

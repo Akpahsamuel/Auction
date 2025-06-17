@@ -14,4 +14,8 @@ export type Auction = {
   nftId: string;
   startTime?: number;
   endTime?: number;
+  // NFT metadata for completed auction storage
+  nftName?: string;
+  nftDescription?: string;
+  nftImageUrl?: string;
 };
