@@ -272,6 +272,33 @@ const Index = () => {
     return "";
   };
 
+  // Helper function to extract NFT image URL from auction data
+  const getNftImageUrl = () => {
+    if (isHistoryView) {
+      return auction.nft_image_url || "";
+    } else {
+      return auction.nft?.fields?.nft?.fields?.image_url || "";
+    }
+  };
+
+  // Helper function to extract NFT name from auction data
+  const getNftName = () => {
+    if (isHistoryView) {
+      return auction.nft_name || "Digital Collectible";
+    } else {
+      return auction.nft?.fields?.nft?.fields?.name || "Digital Collectible";
+    }
+  };
+
+  // Helper function to extract NFT description from auction data
+  const getNftDescription = () => {
+    if (isHistoryView) {
+      return auction.nft_description || "";
+    } else {
+      return auction.nft?.fields?.nft?.fields?.description || "";
+    }
+  };
+
   const formatSui = (mist: string | number) => {
     return formatMistAsSui(mist, 4);
   };
@@ -538,11 +565,12 @@ const Index = () => {
             {/* NFT Image */}
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
               <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                {isHistoryView && auction.nft_image_url ? (
+                {/* Check for both active and completed auction images */}
+                {getNftImageUrl() ? (
                   <div className="w-full h-full">
                     <img 
-                      src={auction.nft_image_url} 
-                      alt={auction.nft_name || "NFT"}
+                      src={getNftImageUrl()} 
+                      alt={getNftName()}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         // Fallback to placeholder if image fails to load
@@ -555,7 +583,7 @@ const Index = () => {
                         <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center">
                           <span className="text-3xl font-bold text-white">NFT</span>
                         </div>
-                        <p className="text-gray-600 font-medium">{auction.nft_name || "Digital Collectible"}</p>
+                        <p className="text-gray-600 font-medium">{getNftName()}</p>
                         <p className="text-sm text-gray-500 mt-1">Unique blockchain asset</p>
                       </div>
                     </div>
@@ -592,29 +620,22 @@ const Index = () => {
                     </div>
                   </div>
                   
-                  {isHistoryView && auction.nft_name && (
+                  {/* NFT Name - Show for both active and completed auctions */}
+                  {getNftName() !== "Digital Collectible" && (
                     <div>
                       <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Name</label>
                       <div className="bg-white p-3 rounded-lg border">
-                        <p className="text-sm text-gray-900">{auction.nft_name}</p>
+                        <p className="text-sm text-gray-900">{getNftName()}</p>
                       </div>
                     </div>
                   )}
                   
-                  {isHistoryView && auction.nft_description && (
+                  {/* NFT Description - Show for both active and completed auctions */}
+                  {getNftDescription() && (
                     <div>
                       <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Description</label>
                       <div className="bg-white p-3 rounded-lg border">
-                        <p className="text-sm text-gray-900">{auction.nft_description}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {isHistoryView && auction.nft_image_url && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Image URL</label>
-                      <div className="bg-white p-3 rounded-lg border">
-                        <p className="text-sm font-mono text-gray-900 break-all">{auction.nft_image_url}</p>
+                        <p className="text-sm text-gray-900">{getNftDescription()}</p>
                       </div>
                     </div>
                   )}
