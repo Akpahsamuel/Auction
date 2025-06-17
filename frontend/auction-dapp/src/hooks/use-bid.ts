@@ -11,23 +11,18 @@ export const useBidHook = () => {
       // Create a new transaction for each bid
       const tx = new Transaction();
 
-      // The contract only supports whole SUI amounts due to its design
-      // bid_amount parameter is u64 expecting SUI units, then multiplied by MIST_PER_SUI internally
-      const bidAmountSui = Math.floor(bidAmount); // Must be whole SUI
+      // Convert SUI to MIST (1 SUI = 1,000,000,000 MIST)
+      // This allows decimal bids like 1.5 SUI = 1,500,000,000 MIST
+      const bidAmountMist = Math.floor(bidAmount * 1_000_000_000);
       
-      if (bidAmountSui !== bidAmount) {
-        toast.warning(`Bid rounded down to ${bidAmountSui} SUI (contract only supports whole SUI amounts)`);
-      }
-
-      // Convert to MIST for the payment coin (1 SUI = 1,000,000,000 MIST)
-      const bidAmountMist = bidAmountSui * 1_000_000_000;
+      console.log(`Bidding ${bidAmount} SUI (${bidAmountMist} MIST)`);
 
       // Prepare move call arguments
       const auctionArg = tx.object(auctionId);
-      const bidAmountArg = tx.pure.u64(bidAmountSui); // Pass in SUI units (contract will multiply by MIST_PER_SUI)
+      const bidAmountMistArg = tx.pure.u64(bidAmountMist); // Pass MIST directly to contract
       const clockArg = tx.object("0x6"); // System clock object
 
-      // Split coins for the bid amount (this needs to be in MIST)
+      // Split coins for the bid amount (payment in MIST)
       const [bidCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(bidAmountMist)]);
 
       // Call the generic place_bid function with proper type argument
@@ -36,8 +31,8 @@ export const useBidHook = () => {
         typeArguments: [nftType], // Pass the NFT type
         arguments: [
           auctionArg,
-          bidAmountArg, // bid_amount in SUI units (u64)
-          bidCoin,      // bid_payment in MIST
+          bidAmountMistArg, // bid_amount_mist in MIST units (u64)
+          bidCoin,          // bid_payment in MIST
           clockArg,
         ],
       });
@@ -47,7 +42,7 @@ export const useBidHook = () => {
         {
           onSuccess: (result) => {
             console.log("Bid placed successfully!", result);
-            toast.success(`Bid of ${bidAmountSui} SUI placed successfully!`);
+            toast.success(`Bid of ${bidAmount} SUI placed successfully!`);
 
             // Log transaction details for debugging
             console.log("Transaction digest:", result.digest);
@@ -247,4 +242,4 @@ const handleCancelError = (error: any) => {
   } else {
     toast.error(`Failed to cancel auction: ${errorMessage}`);
   }
-}; 
+};

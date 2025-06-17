@@ -50,7 +50,10 @@ export const useAuctionHook = () => {
       console.log("NFT Owner:", nftObject.data.owner);
 
       // Convert starting bid from SUI to MIST (1 SUI = 1,000,000,000 MIST)
-      const startingBidMist = Math.floor(auction.startingBid * 1);
+      // This allows decimal starting bids like 1.5 SUI = 1,500,000,000 MIST
+      const startingBidMist = Math.floor(auction.startingBid * 1_000_000_000);
+
+      console.log(`Creating auction with starting bid: ${auction.startingBid} SUI (${startingBidMist} MIST)`);
 
       // Prepare move call arguments
       const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
@@ -63,7 +66,7 @@ export const useAuctionHook = () => {
         "u8",
         Array.from(new TextEncoder().encode(auction.description)),
       );
-      const startingBidArg = tx.pure.u64(startingBidMist);
+      const startingBidMistArg = tx.pure.u64(startingBidMist); // Pass MIST directly to contract
       const endTimeMsArg = tx.pure.u64(auction.endTimeMs);
       const clockArg = tx.object("0x6"); // System clock object
 
@@ -76,7 +79,7 @@ export const useAuctionHook = () => {
           nftArg,
           titleArg,
           descriptionArg,
-          startingBidArg,
+          startingBidMistArg, // starting_bid_mist in MIST units
           endTimeMsArg,
           clockArg,
         ],

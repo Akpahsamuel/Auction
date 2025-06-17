@@ -23,7 +23,7 @@ module auct::auction_house {
     // Constants
     const FEE_PERCENTAGE: u64 = 1; // 1% fee
     const PERCENTAGE_BASE: u64 = 100;
-    const MIN_BID_INCREMENT: u64 = 1_000_000; // 0.001 SUI minimum increment
+    const MIN_BID_INCREMENT: u64 = 1_000_000; // 0.001 SUI minimum increment in MIST
     const MIST_PER_SUI: u64 = 1_000_000_000; // 1 SUI = 1,000,000,000 MIST
     const CLAIM_GRACE_PERIOD: u64 = 30 * 60 * 1000; // 30 minutes in milliseconds
 
@@ -175,13 +175,13 @@ module auct::auction_house {
         transfer::share_object(registry);
     }
 
-    // Create a new NFT auction - the creator deposits their NFT
+    // Create a new NFT auction - starting_bid is now in MIST units
     public entry fun create_auction<T: key + store>(
         registry: &mut AuctionRegistry,
         nft: T,
         title: vector<u8>,
         description: vector<u8>,
-        starting_bid: u64,
+        starting_bid_mist: u64, // Now accepts MIST directly from frontend
         auction_end: u64,
         clock: &Clock,
         ctx: &mut TxContext
@@ -202,8 +202,8 @@ module auct::auction_house {
             creator: tx_context::sender(ctx),
             title: string::utf8(title),
             description: string::utf8(description),
-            starting_bid,
-            current_bid: starting_bid * MIST_PER_SUI, // Convert to smallest unit (MIST)
+            starting_bid: starting_bid_mist, // Store MIST value directly
+            current_bid: starting_bid_mist, // Set current bid to starting bid in MIST
             highest_bidder: tx_context::sender(ctx),
             start_time: current_time,
             end_time,
@@ -228,7 +228,7 @@ module auct::auction_house {
             auction_id,
             creator: tx_context::sender(ctx),
             title: auction.title,
-            starting_bid,
+            starting_bid: starting_bid_mist, // Emit MIST value
             end_time,
             nft_type: string::utf8(b"Generic NFT"),
         });
@@ -236,17 +236,16 @@ module auct::auction_house {
         transfer::share_object(auction);
     }
 
-    // Place a bid on an auction
+    // Place a bid on an auction - bid_amount is now in MIST units
     public entry fun place_bid<T: key + store>(
         auction: &mut Auction<T>,
-        bid_amount: u64,
+        bid_amount_mist: u64, // Now accepts MIST directly from frontend
         bid_payment: Coin<SUI>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         let current_time = clock::timestamp_ms(clock);
         let bidder = tx_context::sender(ctx);
-        let bid_amount_mist = bid_amount * MIST_PER_SUI; // Convert bid amount to MIST
         let payment_amount = coin::value(&bid_payment);
 
         // Check if auction is still active
