@@ -371,11 +371,10 @@ module auct::auction_house {
         };
 
         // Extract values before destructuring
-        let creator = auction.creator;
         let auction_id = object::id(&auction);
-        let current_bid = auction.current_bid;
-        let highest_bidder = auction.highest_bidder;
-        let bid_count = auction.bid_count;
+        let _highest_bidder = auction.highest_bidder;
+        let _current_bid = auction.current_bid;
+        let _bid_count = auction.bid_count;
 
         // Update registry to mark auction as inactive
         *table::borrow_mut(&mut registry.auctions, auction_id) = false;
