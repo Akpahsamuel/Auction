@@ -161,10 +161,10 @@ const Index = () => {
     return (mistValue / 1_000_000_000).toFixed(4);
   };
 
-  const formatStartingBid = (suiAmount: string | number) => {
-    // starting_bid is stored in SUI units, so no conversion needed
-    const suiValue = typeof suiAmount === 'string' ? parseFloat(suiAmount) : suiAmount;
-    return suiValue.toFixed(4);
+  const formatStartingBid = (mistAmount: string | number) => {
+    // starting_bid is now stored in MIST units, so convert to SUI
+    const mistValue = typeof mistAmount === 'string' ? parseInt(mistAmount) : mistAmount;
+    return (mistValue / 1_000_000_000).toFixed(4);
   };
 
   const isAuctionEnded = () => {
@@ -186,14 +186,12 @@ const Index = () => {
 
   const getCurrentBid = () => {
     if (!auctionData?.data?.content?.fields) return "0";
-    // current_bid is stored in MIST, starting_bid is stored in SUI units
-    // If there are bids, use current_bid (in MIST), otherwise convert starting_bid to MIST
+    // Both current_bid and starting_bid are now stored in MIST units
     if (auctionData.data.content.fields.bid_count > 0) {
       return auctionData.data.content.fields.current_bid;
     } else {
-      // Convert starting_bid from SUI to MIST for consistent display
-      const startingBidSui = auctionData.data.content.fields.starting_bid;
-      return (startingBidSui * 1_000_000_000).toString();
+      // starting_bid is already in MIST, so return it directly
+      return auctionData.data.content.fields.starting_bid;
     }
   };
 
