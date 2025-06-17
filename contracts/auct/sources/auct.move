@@ -86,11 +86,33 @@ module auct::auction_house {
         latest_bid_time: u64,
     }
 
+    // Auction history for completed auctions (preserves data without NFT)
+    public struct AuctionHistory has key, store {
+        id: UID,
+        original_auction_id: object::ID,
+        creator: address,
+        title: String,
+        description: String,
+        starting_bid: u64,
+        final_bid: u64,
+        winner: address,
+        start_time: u64,
+        end_time: u64,
+        completion_time: u64,
+        total_bids: u64,
+        // Bid tracking (preserved for history)
+        bid_history: vector<BidEntry>,
+        bidder_info: VecMap<address, BidderInfo>,
+        unique_bidders: u64,
+    }
+
     // Auction registry to track all auctions
     public struct AuctionRegistry has key {
         id: UID,
         auctions: Table<object::ID, bool>, // auction_id -> is_active
+        auction_histories: Table<object::ID, object::ID>, // original_auction_id -> history_object_id
         auction_count: u64,
+        completed_auction_count: u64,
         // Fee collection
         fee_balance: Balance<SUI>,
         treasury_address: address,
@@ -154,7 +176,9 @@ module auct::auction_house {
         let registry = AuctionRegistry {
             id: object::new(ctx),
             auctions: table::new<object::ID, bool>(ctx),
+            auction_histories: table::new<object::ID, object::ID>(ctx),
             auction_count: 0,
+            completed_auction_count: 0,
             fee_balance: balance::zero<SUI>(),
             treasury_address: tx_context::sender(ctx), // Initial deployer as treasury
         };
@@ -345,6 +369,7 @@ module auct::auction_house {
         ctx: &mut TxContext
     ) {
         let claimer = tx_context::sender(ctx);
+        let current_time = clock::timestamp_ms(clock);
         
         // Check if auction can be ended (time-based check)
         assert!(can_end_auction(&auction, clock), EAuctionStillActive);
@@ -367,23 +392,23 @@ module auct::auction_house {
         // Update registry to mark auction as inactive
         *table::borrow_mut(&mut registry.auctions, auction_id) = false;
 
-        // Extract the NFT and handle payments
+        // Extract the auction data and handle payments
         let Auction { 
             id, 
-            creator: _, 
-            title: _, 
-            description: _, 
-            starting_bid: _, 
-            current_bid: _, 
-            highest_bidder: _, 
-            start_time: _, 
-            end_time: _, 
+            creator, 
+            title, 
+            description, 
+            starting_bid, 
+            current_bid, 
+            highest_bidder, 
+            start_time, 
+            end_time, 
             status: _, 
-            bid_count: _, 
+            bid_count, 
             nft, 
-            bid_history: _, 
-            bidder_info: _, 
-            unique_bidders: _,
+            bid_history, 
+            bidder_info, 
+            unique_bidders,
             stored_bids: mut stored_bids,
             highest_bid_balance: mut highest_bid_balance,
         } = auction;
@@ -449,6 +474,35 @@ module auct::auction_house {
         // Destroy empty stored_bids map
         vec_map::destroy_empty(stored_bids);
         
+        // Create auction history to preserve the data
+        let auction_history = AuctionHistory {
+            id: object::new(ctx),
+            original_auction_id: auction_id,
+            creator,
+            title,
+            description,
+            starting_bid,
+            final_bid: current_bid,
+            winner: if (bid_count > 0) { highest_bidder } else { creator },
+            start_time,
+            end_time,
+            completion_time: current_time,
+            total_bids: bid_count,
+            bid_history,
+            bidder_info,
+            unique_bidders,
+        };
+
+        let history_id = object::id(&auction_history);
+        
+        // Add to registry's history tracking
+        table::add(&mut registry.auction_histories, auction_id, history_id);
+        registry.completed_auction_count = registry.completed_auction_count + 1;
+        
+        // Share the auction history object so it can be queried
+        transfer::share_object(auction_history);
+        
+        // Delete the original auction object and transfer NFT
         object::delete(id);
         let extracted_nft = extract_nft(nft);
         transfer::public_transfer(extracted_nft, claimer);
@@ -535,23 +589,23 @@ module auct::auction_house {
         // Update registry to mark auction as inactive
         *table::borrow_mut(&mut registry.auctions, auction_id) = false;
 
-        // Extract the NFT - payment already handled
+        // Extract the auction data - payment already handled
         let Auction { 
             id, 
-            creator: _, 
-            title: _, 
-            description: _, 
-            starting_bid: _, 
-            current_bid: _, 
-            highest_bidder: _, 
-            start_time: _, 
-            end_time: _, 
+            creator, 
+            title, 
+            description, 
+            starting_bid, 
+            current_bid, 
+            highest_bidder, 
+            start_time, 
+            end_time, 
             status: _, 
-            bid_count: _, 
+            bid_count, 
             nft, 
-            bid_history: _, 
-            bidder_info: _, 
-            unique_bidders: _,
+            bid_history, 
+            bidder_info, 
+            unique_bidders,
             stored_bids: mut stored_bids,
             highest_bid_balance, // Should be empty now
         } = auction;
@@ -579,6 +633,35 @@ module auct::auction_house {
         // Destroy empty stored_bids map
         vec_map::destroy_empty(stored_bids);
         
+        // Create auction history to preserve the data
+        let auction_history = AuctionHistory {
+            id: object::new(ctx),
+            original_auction_id: auction_id,
+            creator,
+            title,
+            description,
+            starting_bid,
+            final_bid: current_bid,
+            winner: highest_bidder,
+            start_time,
+            end_time,
+            completion_time: current_time,
+            total_bids: bid_count,
+            bid_history,
+            bidder_info,
+            unique_bidders,
+        };
+
+        let history_id = object::id(&auction_history);
+        
+        // Add to registry's history tracking
+        table::add(&mut registry.auction_histories, auction_id, history_id);
+        registry.completed_auction_count = registry.completed_auction_count + 1;
+        
+        // Share the auction history object so it can be queried
+        transfer::share_object(auction_history);
+        
+        // Delete the original auction object and transfer NFT
         object::delete(id);
         let extracted_nft = extract_nft(nft);
         transfer::public_transfer(extracted_nft, claimer);
@@ -869,6 +952,60 @@ module auct::auction_house {
         // Extract and return the NFT to the creator
         let extracted_nft = extract_nft(nft);
         transfer::public_transfer(extracted_nft, creator);
+    }
+
+    // Get auction history info
+    public fun get_auction_history_info(history: &AuctionHistory): (
+        object::ID, String, String, u64, u64, address, u64, u64, u64, u64, u64
+    ) {
+        (
+            history.original_auction_id,
+            history.title,
+            history.description,
+            history.starting_bid,
+            history.final_bid,
+            history.winner,
+            history.start_time,
+            history.end_time,
+            history.completion_time,
+            history.total_bids,
+            history.unique_bidders
+        )
+    }
+
+    // Get bid history from auction history
+    public fun get_history_bid_history(history: &AuctionHistory): vector<BidEntry> {
+        history.bid_history
+    }
+
+    // Get bidder info from auction history
+    public fun get_history_bidder_info(history: &AuctionHistory, bidder: address): (u64, u64, u64, u64) {
+        if (vec_map::contains(&history.bidder_info, &bidder)) {
+            let info = vec_map::get(&history.bidder_info, &bidder);
+            (info.total_bid_amount, info.bid_count, info.highest_bid, info.latest_bid_time)
+        } else {
+            (0, 0, 0, 0)
+        }
+    }
+
+    // Get registry statistics including completed auctions
+    public fun get_registry_stats(registry: &AuctionRegistry): (u64, u64, u64, address) {
+        (
+            registry.auction_count,
+            registry.completed_auction_count,
+            balance::value(&registry.fee_balance),
+            registry.treasury_address
+        )
+    }
+
+    // Check if auction history exists for a given auction ID
+    public fun has_auction_history(registry: &AuctionRegistry, auction_id: object::ID): bool {
+        table::contains(&registry.auction_histories, auction_id)
+    }
+
+    // Get auction history object ID for a given auction ID
+    public fun get_auction_history_id(registry: &AuctionRegistry, auction_id: object::ID): object::ID {
+        *table::borrow(&registry.auction_histories, auction_id)
     }
 }
 

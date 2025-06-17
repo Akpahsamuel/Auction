@@ -3,28 +3,47 @@ import { SuiObjectResponse } from "@mysten/sui/client";
 // import { auctionData } from "../../../contexts/data";
 import { AuctionCard } from "../../../components/miscellaneous/auction-card";
 import { IoMdBasket } from "react-icons/io";
-import { Gavel } from "lucide-react";
+import { Gavel, History } from "lucide-react";
 import { Button, DropdownMenu } from "@radix-ui/themes";
 import { Link } from "react-router-dom";
 import { useAuctionHook } from "../../../hooks/use-create-auction";
 
 const categories = ["All NFTs", "Digital Art", "Collectibles"];
+const auctionTabs = ["Active", "Completed"];
+
 const ViewAuctions = () => {
   const [activeTab, setActiveTab] = useState("All NFTs");
+  const [auctionTab, setAuctionTab] = useState("Active");
   const [auctions, setAuctions] = useState<SuiObjectResponse[]>([]);
+  const [auctionHistories, setAuctionHistories] = useState<SuiObjectResponse[]>([]);
   const [loading, setLoading] = useState(false);
-  const { getAllAuctionsById } = useAuctionHook();
+  const { getAllAuctionsById, getAllAuctionHistories } = useAuctionHook();
 
   const getAllAuctions = async () => {
     setLoading(true);
     try {
       const response = await getAllAuctionsById();
       if (response) {
-        console.log(response);
+        console.log("Active auctions:", response);
         setAuctions(response);
       }
     } catch (error) {
       console.error("Error fetching auctions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAllHistories = async () => {
+    setLoading(true);
+    try {
+      const response = await getAllAuctionHistories();
+      if (response) {
+        console.log("Auction histories:", response);
+        setAuctionHistories(response);
+      }
+    } catch (error) {
+      console.error("Error fetching auction histories:", error);
     } finally {
       setLoading(false);
     }
@@ -45,8 +64,15 @@ const ViewAuctions = () => {
   };
 
   useEffect(() => {
-    getAllAuctions();
-  }, []);
+    if (auctionTab === "Active") {
+      getAllAuctions();
+    } else {
+      getAllHistories();
+    }
+  }, [auctionTab]);
+
+  const currentData = auctionTab === "Active" ? auctions : auctionHistories;
+  const isHistoryView = auctionTab === "Completed";
 
   if (loading) {
     return (
@@ -55,10 +81,12 @@ const ViewAuctions = () => {
           <div className="w-full flex flex-col justify-between md:flex-row gap-6 md:items-center">
             <div>
               <p className=" font-semibold text-3xl">
-                <span className="gradient-text">Live</span> Auctions
+                <span className="gradient-text">{auctionTab}</span> Auctions
               </p>
               <p className="text-gray-500">
-                Discover the most sought-after digital collectibles
+                {auctionTab === "Active" 
+                  ? "Discover the most sought-after digital collectibles" 
+                  : "Browse completed auction histories"}
               </p>
             </div>
             <Link
@@ -82,10 +110,12 @@ const ViewAuctions = () => {
         <div className="w-full flex flex-col justify-between md:flex-row gap-6 md:items-center">
           <div>
             <p className=" font-semibold text-3xl">
-              <span className="gradient-text">Live</span> Auctions
+              <span className="gradient-text">{auctionTab}</span> Auctions
             </p>
             <p className="text-gray-500">
-              Discover the most sought-after digital collectibles
+              {auctionTab === "Active" 
+                ? "Discover the most sought-after digital collectibles" 
+                : "Browse completed auction histories"}
             </p>
           </div>
           <Link
@@ -95,6 +125,28 @@ const ViewAuctions = () => {
             <Gavel size={16} /> Create Auction
           </Link>
         </div>
+
+        {/* Auction Status Tabs */}
+        <div className="w-full flex flex-col gap-4">
+          <div className="max-w-full min-w-fit inline-flex bg-gray-100 rounded-full p-1 gap-1">
+            {auctionTabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setAuctionTab(tab)}
+                className={`text-sm font-medium px-4 py-2 rounded-full transition-all duration-300 cursor-pointer hover:bg-white/60 flex items-center gap-2
+            ${
+              auctionTab === tab
+                ? "bg-white shadow-sm text-black"
+                : "text-gray-600 hover:text-black"
+            }`}
+              >
+                {tab === "Active" ? <Gavel size={14} /> : <History size={14} />}
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="w-full flex flex-col-reverse md:flex-row gap-5 items-center justify-between">
           <div className="max-w-full min-w-fit inline-flex bg-gray-100 rounded-full p-1 gap-1">
             {categories.map((category) => (
@@ -140,22 +192,25 @@ const ViewAuctions = () => {
           </div>
         </div>
         
-        {auctions.length === 0 ? (
+        {currentData.length === 0 ? (
           <div className="flex justify-center items-center w-full h-full">
             <div className="py-10 max-w-[600px] flex flex-col gap-4 items-center">
               <IoMdBasket size={160} className="text-gray-500" />
               <p className="text-3xl font-semibold">
-                Ooops!!! Nothing is here yet!
+                {auctionTab === "Active" 
+                  ? "Ooops!!! Nothing is here yet!" 
+                  : "No completed auctions yet!"}
               </p>
               <p className="text-gray-500 text-center">
-                There are currently no created auction yet, click on the
-                create auction button to place an item on auction!
+                {auctionTab === "Active" 
+                  ? "There are currently no active auctions yet, click on the create auction button to place an item on auction!"
+                  : "No auctions have been completed yet. Once auctions end and NFTs are claimed, they'll appear here."}
               </p>
             </div>
           </div>
         ) : (
           <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {auctions?.map((data, index) => {
+            {currentData?.map((data, index) => {
               const content = data.data?.content;
               if (!content || !("fields" in content)) return null;
 
@@ -163,21 +218,45 @@ const ViewAuctions = () => {
               console.log("content", content);
               console.log("fields", fields);
               
-              return (
-                <AuctionCard
-                  id={fields.id.id}
-                  key={index}
-                  title={fields.title || ""}
-                  current_bid={Number(fields.current_bid) / 1_000_000_000}
-                  start_time={new Date(Number(fields.start_time)).toString()}
-                  end_time={new Date(Number(fields.end_time)).toString()}
-                  image={fields.nft.fields.nft.fields.image_url}
-                  num_of_bids={Number(fields.bid_count) || 0}
-                  uploader={fields.creator || ""}
-                  nftType={extractNftType(data)}
-                  onCancelSuccess={handleCancelSuccess}
-                />
-              );
+              if (isHistoryView) {
+                // Handle auction history data structure
+                return (
+                  <AuctionCard
+                    id={fields.original_auction_id || fields.id?.id}
+                    key={index}
+                    title={fields.title || ""}
+                    current_bid={Number(fields.final_bid || 0) / 1_000_000_000}
+                    start_time={new Date(Number(fields.start_time)).toString()}
+                    end_time={new Date(Number(fields.end_time)).toString()}
+                    image="/api/placeholder/300/300" // Placeholder since NFT is no longer in history
+                    num_of_bids={Number(fields.total_bids) || 0}
+                    uploader={fields.creator || ""}
+                    nftType="Completed"
+                    onCancelSuccess={handleCancelSuccess}
+                    isCompleted={true}
+                    winner={fields.winner}
+                    completionTime={new Date(Number(fields.completion_time)).toString()}
+                  />
+                );
+              } else {
+                // Handle active auction data structure
+                return (
+                  <AuctionCard
+                    id={fields.id.id}
+                    key={index}
+                    title={fields.title || ""}
+                    current_bid={Number(fields.current_bid) / 1_000_000_000}
+                    start_time={new Date(Number(fields.start_time)).toString()}
+                    end_time={new Date(Number(fields.end_time)).toString()}
+                    image={fields.nft?.fields?.nft?.fields?.image_url || "/api/placeholder/300/300"}
+                    num_of_bids={Number(fields.bid_count) || 0}
+                    uploader={fields.creator || ""}
+                    nftType={extractNftType(data)}
+                    onCancelSuccess={handleCancelSuccess}
+                    isCompleted={false}
+                  />
+                );
+              }
             })}
           </div>
         )}

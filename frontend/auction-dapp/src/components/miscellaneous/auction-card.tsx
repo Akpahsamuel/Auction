@@ -19,6 +19,9 @@ export interface AuctionCardType {
   uploader: string;
   nftType?: string;
   onCancelSuccess?: () => void;
+  isCompleted?: boolean;
+  winner?: string;
+  completionTime?: string;
 }
 
 export function AuctionCard({
@@ -32,6 +35,9 @@ export function AuctionCard({
   uploader,
   nftType,
   onCancelSuccess,
+  isCompleted = false,
+  winner,
+  completionTime,
 }: AuctionCardType) {
   const currentAccount = useCurrentAccount();
   const { cancelAuction } = useBidHook();
@@ -42,6 +48,9 @@ export function AuctionCard({
   };
 
   const canCancelAuction = () => {
+    // Can't cancel completed auctions
+    if (isCompleted) return false;
+    
     const isCreator = isCurrentUserCreator();
     // Convert to number to handle different data types from blockchain
     const bidCount = Number(num_of_bids) || 0;
@@ -55,7 +64,8 @@ export function AuctionCard({
       bidCountType: typeof num_of_bids,
       noBids,
       notEnded,
-      result: isCreator && noBids && notEnded
+      isCompleted,
+      result: isCreator && noBids && notEnded && !isCompleted
     });
     
     return isCreator && noBids && notEnded;
@@ -107,18 +117,27 @@ export function AuctionCard({
         </button>
       )}
 
+      {/* Completed badge */}
+      {isCompleted && (
+        <div className="absolute top-3 right-3 z-10 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+          Completed
+        </div>
+      )}
+
       <Link to={`/auctions/${id}`}>
         {/* Image with badge */}
         <div className="relative h-fit">
           <img
             src={image}
             alt="NFT Preview"
-            className="h-64 w-full object-cover"
+            className={`h-64 w-full object-cover ${isCompleted ? 'grayscale' : ''}`}
           />
           <div className="w-full h-full absolute top-0 bg-gradient-to-b from-transparent to-white/90 bottom-0"></div>
-          <span className="absolute top-3 right-3 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">
-            {num_of_bids} bids
-          </span>
+          {!isCompleted && (
+            <span className="absolute top-3 right-3 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">
+              {num_of_bids} bids
+            </span>
+          )}
         </div>
 
         {/* Content */}
@@ -130,7 +149,10 @@ export function AuctionCard({
             </h3>
             <span className="flex items-center text-xs text-purple-500 font-medium bg-purple-100 px-2 py-0.5 rounded-full">
               <FiClock className="mr-1" />
-              {moment(start_time).format("LT")}
+              {isCompleted 
+                ? moment(completionTime).format("LT")
+                : moment(start_time).format("LT")
+              }
             </span>
           </div>
 
@@ -138,9 +160,19 @@ export function AuctionCard({
             by {uploader}
           </p>
 
+          {/* Winner info for completed auctions */}
+          {isCompleted && winner && (
+            <div className="bg-green-50 p-2 rounded-lg mb-2">
+              <p className="text-xs text-green-600 font-medium">Winner</p>
+              <p className="text-sm text-green-800 truncate">{winner}</p>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-xs text-gray-500">Current Bid</p>
+              <p className="text-xs text-gray-500">
+                {isCompleted ? "Final Bid" : "Current Bid"}
+              </p>
               <div className="flex items-center gap-1 font-semibold text-lg">
                 <img src={suiIcon} className="w-5 h-5" />
                 {current_bid}{" "}
@@ -148,9 +180,16 @@ export function AuctionCard({
               </div>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Ending at</p>
-              <div className="text-sm text-blue-500 font-medium text-end">
-                {moment(end_time).format("LT")}
+              <p className="text-xs text-gray-500">
+                {isCompleted ? "Completed" : "Ending at"}
+              </p>
+              <div className={`text-sm font-medium text-end ${
+                isCompleted ? "text-green-600" : "text-blue-500"
+              }`}>
+                {isCompleted 
+                  ? moment(completionTime).format("MMM DD")
+                  : moment(end_time).format("LT")
+                }
               </div>
             </div>
           </div>
@@ -160,20 +199,31 @@ export function AuctionCard({
               <Eye size={14} />{" "}
               <span className="text-[14px]">View Details</span>
             </button>
-            <button className="bg-[#006fee] h-[40px] rounded-xl text-white font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-1.5 items-center w-full text-[8px] shadow-md shadow-black/20">
-              <Gavel size={14} /> <span className="text-[14px]">Place Bid</span>
-            </button>
+            {!isCompleted && (
+              <button className="bg-[#006fee] h-[40px] rounded-xl text-white font-semibold cursor-pointer hover:opacity-80 transition-all duration-300 flex justify-center gap-1.5 items-center w-full text-[8px] shadow-md shadow-black/20">
+                <Gavel size={14} /> <span className="text-[14px]">Place Bid</span>
+              </button>
+            )}
           </div>
 
-          {/* Creator status indicator */}
-          {isCurrentUserCreator() && (
-            <div className="text-xs text-center py-1 bg-yellow-100 text-yellow-800 rounded-md">
-              Your Auction {canCancelAuction() && "• Can Cancel"}
-              {/* Debug info */}
-              <div className="mt-1 text-[10px] text-gray-600">
-                Bids: {num_of_bids} | Ended: {new Date() >= new Date(end_time) ? 'Yes' : 'No'} | Can Cancel: {canCancelAuction() ? 'Yes' : 'No'}
-              </div>
+          {/* Status indicators */}
+          {isCompleted ? (
+            <div className="text-xs text-center py-1 bg-green-100 text-green-800 rounded-md">
+              Auction Completed • {num_of_bids} total bids
             </div>
+          ) : (
+            <>
+              {/* Creator status indicator */}
+              {isCurrentUserCreator() && (
+                <div className="text-xs text-center py-1 bg-yellow-100 text-yellow-800 rounded-md">
+                  Your Auction {canCancelAuction() && "• Can Cancel"}
+                  {/* Debug info */}
+                  <div className="mt-1 text-[10px] text-gray-600">
+                    Bids: {num_of_bids} | Ended: {new Date() >= new Date(end_time) ? 'Yes' : 'No'} | Can Cancel: {canCancelAuction() ? 'Yes' : 'No'}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </Link>

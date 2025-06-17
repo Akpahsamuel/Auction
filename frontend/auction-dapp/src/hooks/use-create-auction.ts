@@ -242,7 +242,104 @@ export const useAuctionHook = () => {
     }
   };
 
-  return { createAuction, getAllAuctionsById, getAuctionDetailById };
+  const getAllAuctionHistories = async () => {
+    const client = new SuiClient({ url: getFullnodeUrl("devnet") });
+    try {
+      const registryObjectResponse = await client.getObject({
+        id: DEVNET_AUCTION_REGISTRY_ID,
+        options: { showContent: true },
+      });
+
+      if (
+        !registryObjectResponse.data ||
+        registryObjectResponse.data.content?.dataType !== "moveObject" ||
+        !registryObjectResponse.data.content.fields
+      ) {
+        console.error(
+          "AuctionRegistry object not found or content not accessible.",
+        );
+        return [];
+      }
+
+      // Extract the ID of the auction_histories table from the registry object's fields
+      const historyTableId = (registryObjectResponse.data.content.fields as any)
+        .auction_histories?.fields?.id?.id;
+
+      if (!historyTableId) {
+        console.log("No auction histories table found in registry.");
+        return [];
+      }
+
+      console.log("Found auction histories table ID:", historyTableId);
+
+      const fieldsResponse = await client.getDynamicFields({
+        parentId: historyTableId,
+      });
+
+      if (!fieldsResponse.data || fieldsResponse.data.length === 0) {
+        console.log("No auction histories found in the registry.");
+        return [];
+      }
+
+      const historyIds: string[] = [];
+      for (const field of fieldsResponse.data) {
+        if (typeof field.objectId === "string") {
+          historyIds.push(field.objectId);
+        }
+      }
+
+      console.log("Discovered Auction History IDs:", historyIds);
+
+      // Fetch the actual AuctionHistory objects using their IDs
+      if (historyIds.length > 0) {
+        const historyObjects = await client.multiGetObjects({
+          ids: historyIds,
+          options: {
+            showContent: true,
+            showType: true,
+            showOwner: true,
+          },
+        });
+        console.log("Fetched Auction History Objects:", historyObjects);
+        return historyObjects;
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Error fetching auction histories:", error);
+      return [];
+    }
+  };
+
+  const getAuctionHistoryById = async (id: string) => {
+    const client = new SuiClient({ url: getFullnodeUrl("devnet") });
+    try {
+      const response = await client.getObject({
+        id: id,
+        options: {
+          showContent: true,
+          showType: true,
+          showOwner: true,
+        },
+      });
+      if (response) {
+        console.log("Auction History:", response);
+        return response;
+      }
+      return {};
+    } catch (error) {
+      console.error("Error fetching auction history:", error);
+      return {};
+    }
+  };
+
+  return { 
+    createAuction, 
+    getAllAuctionsById, 
+    getAuctionDetailById, 
+    getAllAuctionHistories, 
+    getAuctionHistoryById 
+  };
 };
 
 const handleTransactionError = (error: any) => {
