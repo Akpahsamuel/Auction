@@ -1,11 +1,74 @@
 import { Transaction } from "@mysten/sui/transactions";
 import { DEVNET_PACKAGE_ID, DEVNET_AUCTION_REGISTRY_ID, DEVNET_AUCTION_HOUSE_CAP } from "../contants";
-import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { useSignAndExecuteTransaction, useCurrentAccount } from "@mysten/dapp-kit";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { toast } from "react-toastify";
 
 export const useAdminHook = () => {
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const currentAccount = useCurrentAccount();
+
+  const checkIsAdmin = async (): Promise<boolean> => {
+    if (!currentAccount) {
+      return false;
+    }
+
+    try {
+      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
+      
+      // Method 1: Check if user owns any AuctionHouseCap objects
+      const ownedObjects = await client.getOwnedObjects({
+        owner: currentAccount.address,
+        filter: {
+          StructType: `${DEVNET_PACKAGE_ID}::auction_house::AuctionHouseCap`
+        },
+        options: {
+          showContent: true,
+          showType: true,
+        }
+      });
+
+      console.log("Owned AuctionHouseCap objects:", ownedObjects);
+      
+      const hasAdminCapObject = ownedObjects.data.length > 0;
+      
+      if (hasAdminCapObject) {
+        console.log(`User ${currentAccount.address} has admin capability via owned object`);
+        return true;
+      }
+
+      // Method 2: Fallback - Check if the user's address matches the known admin cap owner
+      try {
+        const adminCapObject = await client.getObject({
+          id: DEVNET_AUCTION_HOUSE_CAP,
+          options: {
+            showOwner: true,
+          }
+        });
+
+        console.log("Admin cap object:", adminCapObject);
+
+        if (adminCapObject.data?.owner && typeof adminCapObject.data.owner === 'object' && 'AddressOwner' in adminCapObject.data.owner) {
+          const adminAddress = adminCapObject.data.owner.AddressOwner;
+          const isAdminByAddress = adminAddress === currentAccount.address;
+          
+          console.log(`Admin cap owner: ${adminAddress}`);
+          console.log(`Current user: ${currentAccount.address}`);
+          console.log(`Is admin by address match: ${isAdminByAddress}`);
+          
+          return isAdminByAddress;
+        }
+      } catch (fallbackError) {
+        console.error("Fallback admin check failed:", fallbackError);
+      }
+      
+      console.log(`User ${currentAccount.address} does not have admin capability`);
+      return false;
+    } catch (error) {
+      console.error("Error checking admin capability:", error);
+      return false;
+    }
+  };
 
   const withdrawRegistryFees = async () => {
     try {
@@ -157,6 +220,7 @@ export const useAdminHook = () => {
     withdrawRegistryFees, 
     updateTreasuryAddress,
     getRegistryFeeInfo,
+    checkIsAdmin,
   };
 };
 

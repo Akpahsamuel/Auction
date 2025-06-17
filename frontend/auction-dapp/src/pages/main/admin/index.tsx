@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAdminHook } from "../../../hooks/use-admin";
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Settings, Coins, RefreshCw, Shield } from "lucide-react";
+import { Settings, Coins, RefreshCw, Shield, AlertTriangle } from "lucide-react";
 
 const AdminPage = () => {
   const [registryFeeInfo, setRegistryFeeInfo] = useState<{
@@ -12,14 +12,36 @@ const AdminPage = () => {
   const [loading, setLoading] = useState(true);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [isUpdatingTreasury, setIsUpdatingTreasury] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
 
   const { 
     withdrawRegistryFees, 
     updateTreasuryAddress,
     getRegistryFeeInfo,
+    checkIsAdmin,
   } = useAdminHook();
   
   const currentAccount = useCurrentAccount();
+
+  const verifyAdminAccess = async () => {
+    if (!currentAccount) {
+      setIsAdmin(false);
+      setCheckingAdmin(false);
+      return;
+    }
+
+    setCheckingAdmin(true);
+    try {
+      const hasAdminAccess = await checkIsAdmin();
+      setIsAdmin(hasAdminAccess);
+    } catch (error) {
+      console.error("Error verifying admin access:", error);
+      setIsAdmin(false);
+    } finally {
+      setCheckingAdmin(false);
+    }
+  };
 
   const fetchFeeInfo = async () => {
     setLoading(true);
@@ -35,8 +57,14 @@ const AdminPage = () => {
   };
 
   useEffect(() => {
-    fetchFeeInfo();
-  }, []);
+    verifyAdminAccess();
+  }, [currentAccount]);
+
+  useEffect(() => {
+    if (isAdmin === true) {
+      fetchFeeInfo();
+    }
+  }, [isAdmin]);
 
   const handleWithdrawRegistryFees = async () => {
     setIsWithdrawing(true);
@@ -83,6 +111,53 @@ const AdminPage = () => {
           <Shield className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Admin Access Required</h2>
           <p className="text-gray-600">Please connect your wallet to access the admin panel.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (checkingAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying Admin Access</h2>
+          <p className="text-gray-600">Checking your admin capabilities...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAdmin === false) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You don't have the required admin capabilities to access this panel.
+          </p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
+            <p className="text-sm text-red-800">
+              <strong>Admin access requires:</strong>
+            </p>
+            <ul className="text-sm text-red-700 mt-2 space-y-1">
+              <li>• Ownership of an AuctionHouseCap NFT</li>
+              <li>• Connected wallet with admin privileges</li>
+            </ul>
+          </div>
+          <div className="mt-6">
+            <button
+              onClick={verifyAdminAccess}
+              disabled={checkingAdmin}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-4"
+            >
+              {checkingAdmin ? 'Checking...' : 'Refresh Admin Status'}
+            </button>
+            <p className="text-xs text-gray-500">
+              Connected as: <span className="font-mono">{currentAccount.address}</span>
+            </p>
+          </div>
         </div>
       </div>
     );
