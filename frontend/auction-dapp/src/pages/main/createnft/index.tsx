@@ -28,14 +28,14 @@ const Index = () => {
     resolver: zodResolver(auctionSchema),
   });
   const onSubmit = async (data: AuctionFormType) => {
-    const durationMs = new Date(data.endTime).getTime() - new Date().getTime();
-    console.log("durationMs", durationMs);
+    const endTimeMs = new Date(data.endTime).getTime();
+    console.log("endTimeMs", endTimeMs);
     const auction: Auction = {
       title: data.title,
       description: data.description,
       startingBid: data.startingBid,
       nftId: data.nftId,
-      durationMs: durationMs,
+      endTimeMs: endTimeMs,
     };
     const result = await createAuction(auction);
     console.log("result", result);

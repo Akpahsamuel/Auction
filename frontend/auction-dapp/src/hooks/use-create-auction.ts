@@ -64,7 +64,7 @@ export const useAuctionHook = () => {
         Array.from(new TextEncoder().encode(auction.description)),
       );
       const startingBidArg = tx.pure.u64(startingBidMist);
-      const durationMsArg = tx.pure.u64(auction.durationMs);
+      const endTimeMsArg = tx.pure.u64(auction.endTimeMs);
       const clockArg = tx.object("0x6"); // System clock object
 
       // Call the generic create_auction function with proper type argument
@@ -77,7 +77,7 @@ export const useAuctionHook = () => {
           titleArg,
           descriptionArg,
           startingBidArg,
-          durationMsArg,
+          endTimeMsArg,
           clockArg,
         ],
       });
