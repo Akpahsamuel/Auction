@@ -1,8 +1,5 @@
 module auct::admin {
     use sui::coin;
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
-    use sui::object::{Self, UID};
     use auct::auction_house::AuctionRegistry;
 
     // Main auction house capability for admin functions

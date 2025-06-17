@@ -16,11 +16,11 @@ export const useAdminHook = () => {
     try {
       const client = new SuiClient({ url: getFullnodeUrl("devnet") });
       
-      // Method 1: Check if user owns any AuctionHouseCap objects
+      // Method 1: Check if user owns any AuctionHouseCap objects (now in admin module)
       const ownedObjects = await client.getOwnedObjects({
         owner: currentAccount.address,
         filter: {
-          StructType: `${DEVNET_PACKAGE_ID}::auction_house::AuctionHouseCap`
+          StructType: `${DEVNET_PACKAGE_ID}::admin::AuctionHouseCap`
         },
         options: {
           showContent: true,
@@ -78,9 +78,9 @@ export const useAdminHook = () => {
       const auctionHouseCapArg = tx.object(DEVNET_AUCTION_HOUSE_CAP);
       const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
 
-      // Call the withdraw_fees function
+      // Call the withdraw_registry_fees function from admin module (requires admin cap)
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction_house::withdraw_fees`,
+        target: `${DEVNET_PACKAGE_ID}::admin::withdraw_registry_fees`,
         arguments: [
           auctionHouseCapArg,
           registryArg,
@@ -118,9 +118,9 @@ export const useAdminHook = () => {
       const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
       const newTreasuryArg = tx.pure.address(newTreasuryAddress);
 
-      // Call the update_treasury_address function
+      // Call the update_treasury_address function from admin module (requires admin cap)
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction_house::update_treasury_address`,
+        target: `${DEVNET_PACKAGE_ID}::admin::update_treasury_address`,
         arguments: [
           auctionHouseCapArg,
           registryArg,
@@ -157,7 +157,7 @@ export const useAdminHook = () => {
       
       console.log("Fetching registry fee info from:", DEVNET_AUCTION_REGISTRY_ID);
       
-      // Call the view function to get registry fee info
+      // Call the view function to get registry fee info (still in auction_house module)
       const result = await client.devInspectTransactionBlock({
         transactionBlock: (() => {
           const tx = new Transaction();
@@ -198,29 +198,25 @@ export const useAdminHook = () => {
         
         console.log("Treasury address:", treasuryAddress);
         
-        const feeInfo = {
-          feeBalance, // This is in MIST
+        return {
+          feeBalance: feeBalance / 1_000_000_000, // Convert MIST to SUI
           treasuryAddress,
         };
-        
-        console.log("Final fee info object:", feeInfo);
-        
-        return feeInfo;
+      } else {
+        console.error("No return values found in inspection result");
+        return { feeBalance: 0, treasuryAddress: "" };
       }
-      
-      console.log("No return values found in result");
-      return null;
     } catch (error) {
       console.error("Error fetching registry fee info:", error);
-      return null;
+      return { feeBalance: 0, treasuryAddress: "" };
     }
   };
 
   return { 
+    checkIsAdmin, 
     withdrawRegistryFees, 
-    updateTreasuryAddress,
-    getRegistryFeeInfo,
-    checkIsAdmin,
+    updateTreasuryAddress, 
+    getRegistryFeeInfo
   };
 };
 
@@ -229,12 +225,22 @@ const handleAdminError = (error: any) => {
 
   const errorMessage = error.message || error.toString();
 
-  if (errorMessage.includes("ENotAuthorized")) {
-    toast.error("You are not authorized to perform this admin action.");
+  if (errorMessage.includes("VMVerificationOrDeserializationError")) {
+    toast.error(
+      "Transaction verification failed. Please ensure you have admin privileges.",
+    );
   } else if (errorMessage.includes("InsufficientGas")) {
     toast.error("Insufficient gas. Please add more SUI to your wallet.");
   } else if (errorMessage.includes("ObjectNotFound")) {
-    toast.error("Admin capability not found. You may not be an admin.");
+    toast.error("Admin capability object not found. Please check your admin status.");
+  } else if (errorMessage.includes("InvalidObjectType")) {
+    toast.error("Invalid admin capability type.");
+  } else if (errorMessage.includes("not owned by")) {
+    toast.error("You don't have admin privileges for this action.");
+  } else if (errorMessage.includes("Package object does not exist")) {
+    toast.error(
+      "Admin contract not found. Please ensure you're connected to the correct network.",
+    );
   } else {
     toast.error(`Admin transaction failed: ${errorMessage}`);
   }
