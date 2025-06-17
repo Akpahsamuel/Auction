@@ -34,12 +34,6 @@ module auct::auction_house {
         Claimed,
     }
 
-    // Main auction house capability
-    public struct AuctionHouseCap has key {
-        id: UID,
-        fee_balance: Balance<SUI>,
-    }
-
     // Generic NFT wrapper to hold any object with key ability
     public struct NFTWrapper<T: key + store> has key, store {
         id: UID,
@@ -168,11 +162,6 @@ module auct::auction_house {
 
     // Initialize the auction house
     fun init(ctx: &mut tx_context::TxContext) {
-        let auction_house_cap = AuctionHouseCap {
-            id: object::new(ctx),
-            fee_balance: balance::zero<SUI>(),
-        };
-
         let registry = AuctionRegistry {
             id: object::new(ctx),
             auctions: table::new<object::ID, bool>(ctx),
@@ -183,7 +172,6 @@ module auct::auction_house {
             treasury_address: tx_context::sender(ctx), // Initial deployer as treasury
         };
 
-        transfer::transfer(auction_house_cap, tx_context::sender(ctx));
         transfer::share_object(registry);
     }
 
@@ -675,44 +663,20 @@ module auct::auction_house {
         });
     }
 
-    // Withdraw accumulated fees from registry (only auction house admins with cap)
-    public entry fun withdraw_fees(
-        _auction_house_cap: &mut AuctionHouseCap,
-        registry: &mut AuctionRegistry,
-        ctx: &mut TxContext
-    ) {
-        let fee_amount = balance::value(&registry.fee_balance);
-        if (fee_amount > 0) {
-            let fee_coin = coin::from_balance(
-                balance::withdraw_all(&mut registry.fee_balance),
-                ctx
-            );
-            transfer::public_transfer(fee_coin, tx_context::sender(ctx));
-        };
+    // Helper functions for admin module to access registry
+
+    // Get registry fee balance (for admin module)
+    public fun get_registry_fee_balance(registry: &AuctionRegistry): u64 {
+        balance::value(&registry.fee_balance)
     }
 
-    // Withdraw fees from auction house cap (only auction house admins with cap)
-    public entry fun withdraw_cap_fees(
-        auction_house_cap: &mut AuctionHouseCap,
-        ctx: &mut TxContext
-    ) {
-        let fee_amount = balance::value(&auction_house_cap.fee_balance);
-        if (fee_amount > 0) {
-            let fee_coin = coin::from_balance(
-                balance::withdraw_all(&mut auction_house_cap.fee_balance),
-                ctx
-            );
-            transfer::public_transfer(fee_coin, tx_context::sender(ctx));
-        };
+    // Withdraw registry fees balance (for admin module)
+    public fun withdraw_registry_fees_balance(registry: &mut AuctionRegistry): Balance<SUI> {
+        balance::withdraw_all(&mut registry.fee_balance)
     }
 
-    // Update treasury address (only auction house admins with cap)
-    public entry fun update_treasury_address(
-        _auction_house_cap: &AuctionHouseCap,
-        registry: &mut AuctionRegistry,
-        new_treasury: address,
-        _ctx: &mut TxContext
-    ) {
+    // Set treasury address (for admin module)
+    public fun set_treasury_address(registry: &mut AuctionRegistry, new_treasury: address) {
         registry.treasury_address = new_treasury;
     }
 
@@ -854,10 +818,6 @@ module auct::auction_house {
 
     public fun get_registry_fee_info(registry: &AuctionRegistry): (u64, address) {
         (balance::value(&registry.fee_balance), registry.treasury_address)
-    }
-
-    public fun get_auction_house_fee_balance(auction_house_cap: &AuctionHouseCap): u64 {
-        balance::value(&auction_house_cap.fee_balance)
     }
 
     public fun is_auction_active<T: key + store>(auction: &Auction<T>, clock: &Clock): bool {
