@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { SuiObjectResponse } from "@mysten/sui/client";
 import { useAuctionHook } from "../../../hooks/use-create-auction";
 import { IoMdBasket } from "react-icons/io";
+import { safeMistToSui } from "../../../utils/currency";
 
 export default function HomePage() {
   const [auctions, setAuctions] = useState<SuiObjectResponse[]>([]);
@@ -99,7 +100,7 @@ export default function HomePage() {
                   Current bid:{" "}
                   <span className="text-gray-900 font-semibold">
                     {validAuctions.length > 0 && validAuctions[0].data?.content && "fields" in validAuctions[0].data.content
-                      ? `${(Number((validAuctions[0].data.content.fields as any).current_bid) / 1_000_000_000).toFixed(4)} SUI`
+                      ? `${safeMistToSui((validAuctions[0].data.content.fields as any).current_bid).toFixed(4)} SUI`
                       : "4.85 SUI"
                     }
                   </span>
@@ -166,7 +167,7 @@ export default function HomePage() {
                   id={fields.id.id}
                   key={index}
                   title={fields.title || "Untitled NFT"}
-                  current_bid={Number(fields.current_bid) / 1_000_000_000}
+                  current_bid={safeMistToSui(fields.current_bid)}
                   start_time={new Date(Number(fields.start_time)).toString()}
                   end_time={new Date(Number(fields.end_time)).toString()}
                   image={fields.nft?.fields?.nft?.fields?.image_url || "https://via.placeholder.com/300x300?text=NFT"}

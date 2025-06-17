@@ -4,6 +4,9 @@ import { useAuctionHook } from "../../../../hooks/use-create-auction";
 import { useBidHook } from "../../../../hooks/use-bid";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { Clock, Trophy, Users, Gavel, AlertCircle, CheckCircle2, Timer, Coins, User, Calendar, Hash } from "lucide-react";
+import { toast } from "react-toastify";
+//import { debugAuctionState, validateBidTransaction, extractAndValidateNftType } from "../../../../utils/debug-helpers";
+import { safeMistToSui, formatMistAsSui } from "../../../../utils/currency";
 
 const Index = () => {
   const { id } = useParams();
@@ -65,56 +68,160 @@ const Index = () => {
   }, [auctionData]);
 
   const handlePlaceBid = async () => {
-    if (!bidAmount || !auctionData || !id) return;
+    if (!bidAmount || !auctionData || !id) {
+      toast.error("Missing required data for placing bid");
+      return;
+    }
 
     const bidValue = parseFloat(bidAmount);
     if (isNaN(bidValue) || bidValue <= 0) {
-      alert("Please enter a valid bid amount");
+      toast.error("Please enter a valid bid amount");
       return;
+    }
+
+    // Validate minimum bid
+    const minimumBid = parseFloat(getMinimumBid());
+    if (bidValue < minimumBid) {
+      toast.error(`Bid must be at least ${minimumBid} SUI`);
+      return;
+    }
+
+    // Check if user has enough balance (rough estimate)
+    if (bidValue > 1000) { // Simple sanity check
+      const confirmed = window.confirm(`You are about to bid ${bidValue} SUI. Are you sure?`);
+      if (!confirmed) return;
     }
 
     setIsPlacingBid(true);
     try {
       const nftType = extractNftType(auctionData);
+      if (!nftType) {
+        throw new Error("Could not determine NFT type for bidding");
+      }
+      
+      console.log("Placing bid:", {
+        auctionId: id,
+        bidAmount: bidValue,
+        nftType,
+        minimumBid
+      });
+      
       await placeBid(id, bidValue, nftType);
       setBidAmount("");
+      
       // Refresh auction data after successful bid
+      console.log("Refreshing auction data after successful bid...");
       const updatedData = await getAuctionDetailById(id);
       setAuctionData(updatedData);
+      
+      toast.success(`Bid of ${bidValue} SUI placed successfully!`);
     } catch (error) {
       console.error("Failed to place bid:", error);
+      toast.error(`Failed to place bid: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsPlacingBid(false);
     }
   };
 
   const handleClaimNft = async () => {
-    if (!auctionData || !id) return;
+    if (!auctionData || !id) {
+      toast.error("Missing auction data for claiming NFT");
+      return;
+    }
+
+    // Validate that auction has ended
+    if (!isAuctionEnded()) {
+      toast.error("Cannot claim NFT: auction has not ended yet");
+      return;
+    }
+
+    // Validate that user is the winner
+    if (!isCurrentUserWinner()) {
+      toast.error("Cannot claim NFT: you are not the highest bidder");
+      return;
+    }
 
     setIsClaiming(true);
     try {
       const nftType = extractNftType(auctionData);
+      if (!nftType) {
+        throw new Error("Could not determine NFT type for claiming");
+      }
+      
+      console.log("Claiming NFT:", {
+        auctionId: id,
+        nftType,
+        isWinner: isCurrentUserWinner(),
+        isEnded: isAuctionEnded()
+      });
+      
       await claimNft(id, nftType);
+      
+      // Refresh auction data after successful claim
+      console.log("Refreshing auction data after successful claim...");
       const updatedData = await getAuctionDetailById(id);
       setAuctionData(updatedData);
+      
+      toast.success("NFT claimed successfully!");
     } catch (error) {
       console.error("Failed to claim NFT:", error);
+      toast.error(`Failed to claim NFT: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsClaiming(false);
     }
   };
 
   const handleClaimProceeds = async () => {
-    if (!auctionData || !id) return;
+    if (!auctionData || !id) {
+      toast.error("Missing auction data for claiming proceeds");
+      return;
+    }
+
+    // Validate that auction has ended
+    if (!isAuctionEnded()) {
+      toast.error("Cannot claim proceeds: auction has not ended yet");
+      return;
+    }
+
+    // Validate that user is the creator
+    if (!isCurrentUserCreator()) {
+      toast.error("Cannot claim proceeds: you are not the auction creator");
+      return;
+    }
+
+    // Check if there are any bids
+    const auction = auctionData.data.content.fields;
+    if (auction.bid_count === 0) {
+      toast.error("Cannot claim proceeds: no bids were placed on this auction");
+      return;
+    }
 
     setIsClaiming(true);
     try {
       const nftType = extractNftType(auctionData);
+      if (!nftType) {
+        throw new Error("Could not determine NFT type for claiming proceeds");
+      }
+      
+      console.log("Claiming creator proceeds:", {
+        auctionId: id,
+        nftType,
+        isCreator: isCurrentUserCreator(),
+        isEnded: isAuctionEnded(),
+        bidCount: auction.bid_count
+      });
+      
       await claimCreatorProceeds(id, nftType);
+      
+      // Refresh auction data after successful claim
+      console.log("Refreshing auction data after successful proceeds claim...");
       const updatedData = await getAuctionDetailById(id);
       setAuctionData(updatedData);
+      
+      toast.success("Creator proceeds claimed successfully!");
     } catch (error) {
       console.error("Failed to claim proceeds:", error);
+      toast.error(`Failed to claim proceeds: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsClaiming(false);
     }
@@ -148,23 +255,32 @@ const Index = () => {
   };
 
   const extractNftType = (auction: any) => {
-    if (auction?.data?.type) {
-      const typeString = auction.data.type;
-      const match = typeString.match(/<(.+)>/);
-      return match ? match[1] : "";
+    if (!auction?.data?.type) {
+      console.error("Auction data or type not found:", auction);
+      return "";
     }
+    
+    const typeString = auction.data.type;
+    console.log("Extracting NFT type from:", typeString);
+    
+    // Handle generic auction types like: 0x...::auction_house::Auction<0x...::nft::NFT>
+    const match = typeString.match(/<(.+)>/);
+    if (match && match[1]) {
+      const nftType = match[1].trim();
+      console.log("Extracted NFT type:", nftType);
+      return nftType;
+    }
+    
+    console.error("Could not extract NFT type from:", typeString);
     return "";
   };
 
   const formatSui = (mist: string | number) => {
-    const mistValue = typeof mist === 'string' ? parseInt(mist) : mist;
-    return (mistValue / 1_000_000_000).toFixed(4);
+    return formatMistAsSui(mist, 4);
   };
 
   const formatStartingBid = (mistAmount: string | number) => {
-    // starting_bid is now stored in MIST units, so convert to SUI
-    const mistValue = typeof mistAmount === 'string' ? parseInt(mistAmount) : mistAmount;
-    return (mistValue / 1_000_000_000).toFixed(4);
+    return formatMistAsSui(mistAmount, 4);
   };
 
   const isAuctionEnded = () => {
@@ -196,9 +312,24 @@ const Index = () => {
   };
 
   const getMinimumBid = () => {
-    const currentBid = parseFloat(formatSui(getCurrentBid()));
-    // Since contract only supports whole SUI amounts, minimum bid is next whole SUI
-    return Math.ceil(currentBid + 0.001).toString();
+    if (!auctionData?.data?.content?.fields) {
+      console.warn("Auction data not available for minimum bid calculation");
+      return "1";
+    }
+    
+    const currentBidMist = getCurrentBid();
+    const currentBidSui = parseFloat(formatSui(currentBidMist));
+    
+    // Add minimum increment (0.001 SUI) and round up to next whole SUI
+    const minimumBidSui = Math.ceil(currentBidSui + 0.001);
+    
+    console.log("Minimum bid calculation:", {
+      currentBidMist,
+      currentBidSui,
+      minimumBidSui
+    });
+    
+    return minimumBidSui.toString();
   };
 
   const canCancelAuction = () => {
@@ -222,6 +353,25 @@ const Index = () => {
     });
     
     return userIsCreator && noBids && notEnded;
+  };
+
+  // Simple debug function to help troubleshoot issues
+  const handleDebugAuction = () => {
+    if (!id || !auctionData) return;
+    
+    console.log("🔍 Auction Debug Information:");
+    console.log("Auction ID:", id);
+    console.log("Auction Data:", auctionData);
+    console.log("NFT Type:", extractNftType(auctionData));
+    console.log("Current User:", currentAccount?.address);
+    console.log("Is Creator:", isCurrentUserCreator());
+    console.log("Is Winner:", isCurrentUserWinner());
+    console.log("Is Ended:", isAuctionEnded());
+    console.log("Can Cancel:", canCancelAuction());
+    console.log("Current Bid:", getCurrentBid());
+    console.log("Minimum Bid:", getMinimumBid());
+    
+    toast.info("Debug information logged to console");
   };
 
   if (loading) {
@@ -614,6 +764,22 @@ const Index = () => {
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Debug Panel - Development Only */}
+              {true && ( // Set to false in production
+                <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl p-4 mt-6">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">🔧 Development Tools</h4>
+                  <button
+                    onClick={handleDebugAuction}
+                    className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg text-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  >
+                    Debug Auction State
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Check browser console for debug information
+                  </p>
                 </div>
               )}
             </div>

@@ -1,5 +1,5 @@
 import { Transaction } from "@mysten/sui/transactions";
-import { DEVNET_PACKAGE_ID, DEVNET_AUCTION_REGISTRY_ID, DEVNET_AUCTION_HOUSE_CAP } from "../contants";
+import { DEVNET_PACKAGE_ID, DEVNET_AUCTION_REGISTRY_ID } from "../contants";
 import { useSignAndExecuteTransaction, useCurrentAccount } from "@mysten/dapp-kit";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { toast } from "react-toastify";
@@ -8,15 +8,16 @@ export const useAdminHook = () => {
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const currentAccount = useCurrentAccount();
 
-  const checkIsAdmin = async (): Promise<boolean> => {
+  // Helper function to get user's admin capability
+  const getUserAdminCap = async (): Promise<string | null> => {
     if (!currentAccount) {
-      return false;
+      return null;
     }
 
     try {
       const client = new SuiClient({ url: getFullnodeUrl("devnet") });
       
-      // Method 1: Check if user owns any AuctionHouseCap objects (now in admin module)
+      // Find the user's AuctionHouseCap objects
       const ownedObjects = await client.getOwnedObjects({
         owner: currentAccount.address,
         filter: {
@@ -28,57 +29,44 @@ export const useAdminHook = () => {
         }
       });
 
-      console.log("Owned AuctionHouseCap objects:", ownedObjects);
+      console.log("Found AuctionHouseCap objects:", ownedObjects);
       
-      const hasAdminCapObject = ownedObjects.data.length > 0;
-      
-      if (hasAdminCapObject) {
-        console.log(`User ${currentAccount.address} has admin capability via owned object`);
-        return true;
+      if (ownedObjects.data.length > 0) {
+        // Return the first admin capability found
+        const adminCapId = ownedObjects.data[0].data?.objectId;
+        console.log("Using admin capability:", adminCapId);
+        return adminCapId || null;
       }
 
-      // Method 2: Fallback - Check if the user's address matches the known admin cap owner
-      try {
-        const adminCapObject = await client.getObject({
-          id: DEVNET_AUCTION_HOUSE_CAP,
-          options: {
-            showOwner: true,
-          }
-        });
-
-        console.log("Admin cap object:", adminCapObject);
-
-        if (adminCapObject.data?.owner && typeof adminCapObject.data.owner === 'object' && 'AddressOwner' in adminCapObject.data.owner) {
-          const adminAddress = adminCapObject.data.owner.AddressOwner;
-          const isAdminByAddress = adminAddress === currentAccount.address;
-          
-          console.log(`Admin cap owner: ${adminAddress}`);
-          console.log(`Current user: ${currentAccount.address}`);
-          console.log(`Is admin by address match: ${isAdminByAddress}`);
-          
-          return isAdminByAddress;
-        }
-      } catch (fallbackError) {
-        console.error("Fallback admin check failed:", fallbackError);
-      }
-      
-      console.log(`User ${currentAccount.address} does not have admin capability`);
-      return false;
+      console.log("No admin capabilities found for user");
+      return null;
     } catch (error) {
-      console.error("Error checking admin capability:", error);
-      return false;
+      console.error("Error finding user's admin capability:", error);
+      return null;
     }
+  };
+
+  const checkIsAdmin = async (): Promise<boolean> => {
+    const adminCapId = await getUserAdminCap();
+    return adminCapId !== null;
   };
 
   const withdrawRegistryFees = async () => {
     try {
+      // First, get the user's admin capability
+      const adminCapId = await getUserAdminCap();
+      if (!adminCapId) {
+        toast.error("You don't have admin privileges. An AuctionHouseCap is required.");
+        return;
+      }
+
       const tx = new Transaction();
 
-      // Prepare move call arguments
-      const auctionHouseCapArg = tx.object(DEVNET_AUCTION_HOUSE_CAP);
+      // Prepare move call arguments using the user's admin capability
+      const auctionHouseCapArg = tx.object(adminCapId);
       const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
 
-      // Call the withdraw_registry_fees function from admin module (requires admin cap)
+      // Call the withdraw_registry_fees function from admin module
       tx.moveCall({
         target: `${DEVNET_PACKAGE_ID}::admin::withdraw_registry_fees`,
         arguments: [
@@ -111,14 +99,21 @@ export const useAdminHook = () => {
 
   const updateTreasuryAddress = async (newTreasuryAddress: string) => {
     try {
+      // First, get the user's admin capability
+      const adminCapId = await getUserAdminCap();
+      if (!adminCapId) {
+        toast.error("You don't have admin privileges. An AuctionHouseCap is required.");
+        return;
+      }
+
       const tx = new Transaction();
 
-      // Prepare move call arguments
-      const auctionHouseCapArg = tx.object(DEVNET_AUCTION_HOUSE_CAP);
+      // Prepare move call arguments using the user's admin capability
+      const auctionHouseCapArg = tx.object(adminCapId);
       const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
       const newTreasuryArg = tx.pure.address(newTreasuryAddress);
 
-      // Call the update_treasury_address function from admin module (requires admin cap)
+      // Call the update_treasury_address function from admin module
       tx.moveCall({
         target: `${DEVNET_PACKAGE_ID}::admin::update_treasury_address`,
         arguments: [
@@ -182,7 +177,7 @@ export const useAdminHook = () => {
         console.log("Fee balance bytes as array:", Array.from(new Uint8Array(feeBalanceBytes[0])));
         console.log("Raw treasury address bytes:", treasuryAddressBytes);
         
-        // Use DataView for reliable u64 conversion (this worked in our test)
+        // Use DataView for reliable u64 conversion
         const feeBalanceArray = new Uint8Array(feeBalanceBytes[0]);
         const dataView = new DataView(feeBalanceArray.buffer);
         const feeBalance = Number(dataView.getBigUint64(0, true)); // little-endian
@@ -214,13 +209,20 @@ export const useAdminHook = () => {
 
   const createAdminCap = async (recipientAddress: string) => {
     try {
+      // First, get the user's admin capability
+      const adminCapId = await getUserAdminCap();
+      if (!adminCapId) {
+        toast.error("You don't have admin privileges. An AuctionHouseCap is required to create new admin capabilities.");
+        return;
+      }
+
       const tx = new Transaction();
 
-      // Prepare move call arguments
-      const auctionHouseCapArg = tx.object(DEVNET_AUCTION_HOUSE_CAP);
+      // Prepare move call arguments using the user's admin capability
+      const auctionHouseCapArg = tx.object(adminCapId);
       const recipientArg = tx.pure.address(recipientAddress);
 
-      // Call the create_admin_cap function from admin module (requires admin cap)
+      // Call the create_admin_cap function from admin module
       tx.moveCall({
         target: `${DEVNET_PACKAGE_ID}::admin::create_admin_cap`,
         arguments: [
@@ -256,7 +258,8 @@ export const useAdminHook = () => {
     withdrawRegistryFees, 
     updateTreasuryAddress, 
     getRegistryFeeInfo,
-    createAdminCap
+    createAdminCap,
+    getUserAdminCap // Export this for debugging purposes
   };
 };
 
@@ -281,6 +284,8 @@ const handleAdminError = (error: any) => {
     toast.error(
       "Admin contract not found. Please ensure you're connected to the correct network.",
     );
+  } else if (errorMessage.includes("Insufficient balance")) {
+    toast.error("Insufficient balance to complete the transaction.");
   } else {
     toast.error(`Admin transaction failed: ${errorMessage}`);
   }

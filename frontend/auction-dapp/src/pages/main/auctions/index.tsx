@@ -7,6 +7,7 @@ import { Gavel, History } from "lucide-react";
 import { Button, DropdownMenu } from "@radix-ui/themes";
 import { Link } from "react-router-dom";
 import { useAuctionHook } from "../../../hooks/use-create-auction";
+import { safeMistToSui } from "../../../utils/currency";
 
 const categories = ["All NFTs", "Digital Art", "Collectibles"];
 const auctionTabs = ["Active", "Completed"];
@@ -220,32 +221,59 @@ const ViewAuctions = () => {
               
               if (isHistoryView) {
                 // Handle auction history data structure
+                console.log("History auction fields:", fields);
+                console.log("Raw auction history data:", data);
+                
+                // Use the utility function to safely convert final_bid from MIST to SUI
+                const finalBidSui = safeMistToSui(fields.final_bid, 0);
+                
+                // Validate other fields that might cause issues
+                const totalBids = Number(fields.total_bids) || 0;
+                const startTime = Number(fields.start_time) || Date.now();
+                const endTime = Number(fields.end_time) || Date.now();
+                const completionTime = Number(fields.completion_time) || Date.now();
+                
+                console.log("Final bid conversion:", {
+                  originalValue: fields.final_bid,
+                  convertedValue: finalBidSui,
+                  auctionId: fields.original_auction_id,
+                  totalBids,
+                  title: fields.title,
+                  creator: fields.creator,
+                  winner: fields.winner
+                });
+                
                 return (
                   <AuctionCard
                     id={fields.original_auction_id || fields.id?.id}
                     key={index}
-                    title={fields.title || ""}
-                    current_bid={Number(fields.final_bid || 0) / 1_000_000_000}
-                    start_time={new Date(Number(fields.start_time)).toString()}
-                    end_time={new Date(Number(fields.end_time)).toString()}
+                    title={fields.title || "Completed Auction"}
+                    current_bid={finalBidSui}
+                    start_time={new Date(startTime).toString()}
+                    end_time={new Date(endTime).toString()}
                     image="/api/placeholder/300/300" // Placeholder since NFT is no longer in history
-                    num_of_bids={Number(fields.total_bids) || 0}
-                    uploader={fields.creator || ""}
+                    num_of_bids={totalBids}
+                    uploader={fields.creator || "Unknown"}
                     nftType="Completed"
                     onCancelSuccess={handleCancelSuccess}
                     isCompleted={true}
-                    winner={fields.winner}
-                    completionTime={new Date(Number(fields.completion_time)).toString()}
+                    winner={fields.winner || "Unknown"}
+                    completionTime={new Date(completionTime).toString()}
                   />
                 );
               } else {
                 // Handle active auction data structure
+                console.log("Active auction fields:", fields);
+                
+                // Use the utility function to safely convert current_bid from MIST to SUI
+                const currentBidSui = safeMistToSui(fields.current_bid, 0);
+                
                 return (
                   <AuctionCard
                     id={fields.id.id}
                     key={index}
                     title={fields.title || ""}
-                    current_bid={Number(fields.current_bid) / 1_000_000_000}
+                    current_bid={currentBidSui}
                     start_time={new Date(Number(fields.start_time)).toString()}
                     end_time={new Date(Number(fields.end_time)).toString()}
                     image={fields.nft?.fields?.nft?.fields?.image_url || "/api/placeholder/300/300"}
