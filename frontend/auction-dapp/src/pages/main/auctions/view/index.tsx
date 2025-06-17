@@ -208,10 +208,10 @@ const Index = () => {
           {/* Auction Header */}
           <div className="p-6 border-b border-gray-200">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {new TextDecoder().decode(new Uint8Array(auction.title))}
+              {auction.title || "Untitled Auction"}
             </h1>
             <p className="text-gray-600">
-              {new TextDecoder().decode(new Uint8Array(auction.description))}
+              {auction.description || "No description provided"}
             </p>
             <div className="mt-4 flex items-center space-x-4">
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${

@@ -90,7 +90,7 @@ export default function HomePage() {
               <div className="flex flex-col gap-2">
                 <p className="text-xl font-medium text-black">
                   {validAuctions.length > 0 && validAuctions[0].data?.content && "fields" in validAuctions[0].data.content 
-                    ? new TextDecoder().decode(new Uint8Array((validAuctions[0].data.content.fields as any).title))
+                    ? (validAuctions[0].data.content.fields as any).title || "Featured Auction"
                     : "Quantum Singularity #7"
                   }
                 </p>
@@ -165,7 +165,7 @@ export default function HomePage() {
                 <AuctionCard
                   id={fields.id.id}
                   key={index}
-                  title={new TextDecoder().decode(new Uint8Array(fields.title)) || "Untitled NFT"}
+                  title={fields.title || "Untitled NFT"}
                   current_bid={Number(fields.current_bid) / 1_000_000_000}
                   start_time={new Date(Number(fields.start_time)).toString()}
                   end_time={new Date(Number(fields.end_time)).toString()}
