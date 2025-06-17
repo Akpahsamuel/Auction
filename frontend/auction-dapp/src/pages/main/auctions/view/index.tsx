@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAuctionHook } from "../../../../hooks/use-create-auction";
 import { useBidHook } from "../../../../hooks/use-bid";
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Clock, Trophy, Gavel, AlertCircle, CheckCircle2, Coins, User, Calendar, Hash, X, RefreshCw } from "lucide-react";
+import { Clock, Trophy, Gavel, AlertCircle, CheckCircle2, Coins, User, Calendar, Hash, X, RefreshCw, ExternalLink } from "lucide-react";
 import { toast } from "react-toastify";
 import { formatMistAsSui } from "../../../../utils/currency";
 
@@ -453,48 +453,24 @@ const Index = () => {
 
   // Simple debug function to help troubleshoot issues
   const handleDebugAuction = () => {
-    if (!id || !auctionData) return;
-    
-    const auction = auctionData.data.content.fields;
-    
-    console.log("🔍 Comprehensive Auction Debug Information:");
+    console.log("=== AUCTION DEBUG INFO ===");
     console.log("Auction ID:", id);
-    console.log("Auction Data:", auctionData);
+    console.log("Full auction data:", auctionData);
+    console.log("Auction fields:", auction);
+    console.log("User address:", currentAccount?.address);
+    console.log("User is creator:", isCurrentUserCreator());
+    console.log("User is winner:", isCurrentUserWinner());
+    console.log("Auction ended:", isAuctionEnded());
+    console.log("Can cancel:", canCancelAuction());
+    console.log("Is history view:", !!auctionData.isHistory);
     console.log("NFT Type:", extractNftType(auctionData));
-    console.log("Current User:", currentAccount?.address);
-    console.log("Is Creator:", isCurrentUserCreator());
-    console.log("Is Winner:", isCurrentUserWinner());
-    console.log("Is Ended:", isAuctionEnded());
-    console.log("Can Cancel:", canCancelAuction());
-    console.log("Current Bid:", getCurrentBid());
-    console.log("Minimum Bid:", getMinimumBid());
-    
-    // Enhanced status debugging
-    console.log("📊 Status Analysis:");
-    console.log("  Raw Status:", auction.status);
-    console.log("  Status Type:", typeof auction.status);
-    console.log("  Status String:", JSON.stringify(auction.status));
-    if (auction.status && typeof auction.status === 'object') {
-      console.log("  Status Keys:", Object.keys(auction.status));
-      console.log("  Status Variant:", auction.status.variant);
-      console.log("  Status Type Field:", auction.status.type);
-      console.log("  Status Fields:", auction.status.fields);
-      console.log("  Has 'Claimed' property:", auction.status.hasOwnProperty('Claimed'));
-      console.log("  Claimed value:", auction.status.Claimed);
-      console.log("  Variant === 'Claimed':", auction.status.variant === "Claimed");
-    }
-    console.log("  Creator Already Claimed (computed):", isCreatorAlreadyClaimed());
-    console.log("  Claim Method Info:", getClaimInfo());
-    
-    // Additional debug info
-    console.log("🎯 Claiming Eligibility:");
-    console.log("  End Time:", new Date(parseInt(auction.end_time)).toISOString());
-    console.log("  Current Time:", new Date().toISOString());
-    console.log("  Time Passed Since End:", Date.now() - parseInt(auction.end_time), "ms");
-    console.log("  Bid Count:", auction.bid_count);
-    console.log("  Highest Bidder:", auction.highest_bidder);
-    
-    toast.info("Comprehensive debug information logged to console");
+    console.log("========================");
+  };
+
+  const handleViewOnBlockchain = () => {
+    // Open SuiScan (Sui blockchain explorer) for the auction object
+    const explorerUrl = `https://suiscan.xyz/devnet/object/${id}`;
+    window.open(explorerUrl, '_blank', 'noopener,noreferrer');
   };
 
   if (loading) {
@@ -693,6 +669,21 @@ const Index = () => {
                         }
                       </p>
                     </div>
+                  </div>
+                  
+                  {/* Blockchain Explorer Button */}
+                  <div className="mt-6">
+                    <button 
+                      onClick={handleViewOnBlockchain}
+                      className="w-full bg-gradient-to-r from-gray-700 to-gray-800 text-white py-3 px-4 rounded-lg font-semibold hover:from-gray-800 hover:to-gray-900 transition-all duration-200 flex items-center justify-center gap-2 shadow-md"
+                      title="View auction details on Sui blockchain explorer"
+                    >
+                      <ExternalLink size={16} />
+                      <span>View on Blockchain Explorer</span>
+                    </button>
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      Explore this auction's blockchain data on SuiScan
+                    </p>
                   </div>
                 </div>
               </div>
