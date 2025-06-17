@@ -106,6 +106,51 @@ export const useBidHook = () => {
     }
   };
 
+  const claimNftAfterCreatorClaim = async (auctionId: string, nftType: string) => {
+    try {
+      // Create a new transaction for claiming NFT after creator has claimed proceeds
+      const tx = new Transaction();
+
+      // Prepare move call arguments
+      const auctionArg = tx.object(auctionId);
+      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
+      const clockArg = tx.object("0x6"); // System clock object
+
+      // Call the generic claim_nft_after_creator_claim function with proper type argument
+      tx.moveCall({
+        target: `${DEVNET_PACKAGE_ID}::auction_house::claim_nft_after_creator_claim`,
+        typeArguments: [nftType], // Pass the NFT type
+        arguments: [
+          auctionArg,
+          registryArg,
+          clockArg,
+        ],
+      });
+
+      signAndExecuteTransaction(
+        { transaction: tx },
+        {
+          onSuccess: (result) => {
+            console.log("NFT claimed successfully after creator claim!", result);
+            toast.success("NFT claimed successfully!");
+
+            // Log transaction details for debugging
+            console.log("Transaction digest:", result.digest);
+          },
+          onError: (error) => {
+            console.error("Failed to claim NFT after creator claim:", error);
+            handleBidError(error);
+          },
+        },
+      );
+    } catch (error: any) {
+      console.error("Error preparing claim NFT after creator claim transaction:", error);
+      toast.error(
+        `Failed to claim NFT: ${error.message || "Unknown error"}`,
+      );
+    }
+  };
+
   const claimCreatorProceeds = async (auctionId: string, nftType: string) => {
     try {
       // Create a new transaction for claiming creator proceeds
@@ -194,7 +239,7 @@ export const useBidHook = () => {
     }
   };
 
-  return { placeBid, claimNft, claimCreatorProceeds, cancelAuction };
+  return { placeBid, claimNft, claimNftAfterCreatorClaim, claimCreatorProceeds, cancelAuction };
 };
 
 const handleBidError = (error: any) => {

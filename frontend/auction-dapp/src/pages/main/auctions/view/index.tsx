@@ -23,7 +23,7 @@ const Index = () => {
   });
   
   const { getAuctionDetailById } = useAuctionHook();
-  const { placeBid, claimNft, claimCreatorProceeds, cancelAuction } = useBidHook();
+  const { placeBid, claimNft, claimNftAfterCreatorClaim, claimCreatorProceeds, cancelAuction } = useBidHook();
   const currentAccount = useCurrentAccount();
 
   useEffect(() => {
@@ -147,14 +147,30 @@ const Index = () => {
         throw new Error("Could not determine NFT type for claiming");
       }
       
-      console.log("Claiming NFT:", {
+      const auction = auctionData.data.content.fields;
+      
+      // Check if creator has already claimed proceeds using the helper function
+      const creatorHasClaimedProceeds = isCreatorAlreadyClaimed();
+      
+      console.log("🔍 Detailed Claiming Debug:", {
         auctionId: id,
         nftType,
         isWinner: isCurrentUserWinner(),
-        isEnded: isAuctionEnded()
+        isEnded: isAuctionEnded(),
+        isCreatorAlreadyClaimed: creatorHasClaimedProceeds,
+        rawAuctionStatus: auction.status,
+        statusType: typeof auction.status,
+        statusKeys: auction.status && typeof auction.status === 'object' ? Object.keys(auction.status) : 'N/A',
+        claimMethodSelected: creatorHasClaimedProceeds ? 'claim_nft_after_creator_claim' : 'claim_nft'
       });
       
-      await claimNft(id, nftType);
+      if (creatorHasClaimedProceeds) {
+        console.log("✅ Using claim_nft_after_creator_claim function...");
+        await claimNftAfterCreatorClaim(id, nftType);
+      } else {
+        console.log("✅ Using standard claim_nft function...");
+        await claimNft(id, nftType);
+      }
       
       // Refresh auction data after successful claim
       console.log("Refreshing auction data after successful claim...");
@@ -350,11 +366,55 @@ const Index = () => {
     return userIsCreator && noBids && notEnded;
   };
 
+  // Helper function to check if creator has already claimed proceeds
+  const isCreatorAlreadyClaimed = () => {
+    if (!auctionData?.data?.content?.fields) return false;
+    const auction = auctionData.data.content.fields;
+    
+    // Move enums in Sui are represented with type and variant fields
+    const status = auction.status;
+    
+    // Handle multiple possible representations of the Claimed enum
+    if (typeof status === 'string') {
+      return status === "Claimed";
+    } else if (typeof status === 'object' && status !== null) {
+      // Check for Sui enum format: { "type": "...", "variant": "Claimed", "fields": {} }
+      if (status.variant === "Claimed") {
+        return true;
+      }
+      // Check for alternative object representation like { "Claimed": null } or { "Claimed": {} }
+      return status.hasOwnProperty('Claimed') || status.Claimed !== undefined;
+    }
+    
+    return false;
+  };
+
+  // Helper function to get claim button text and explanation
+  const getClaimInfo = () => {
+    if (!auctionData?.data?.content?.fields) return { text: "Claim NFT", explanation: "" };
+    
+    const creatorClaimed = isCreatorAlreadyClaimed();
+    
+    if (creatorClaimed) {
+      return {
+        text: "Claim NFT",
+        explanation: "Creator has already claimed proceeds. You can now claim your NFT."
+      };
+    } else {
+      return {
+        text: "Claim NFT & Pay Creator",
+        explanation: "This will transfer the NFT to you and pay the creator (minus 1% fee)."
+      };
+    }
+  };
+
   // Simple debug function to help troubleshoot issues
   const handleDebugAuction = () => {
     if (!id || !auctionData) return;
     
-    console.log("🔍 Auction Debug Information:");
+    const auction = auctionData.data.content.fields;
+    
+    console.log("🔍 Comprehensive Auction Debug Information:");
     console.log("Auction ID:", id);
     console.log("Auction Data:", auctionData);
     console.log("NFT Type:", extractNftType(auctionData));
@@ -366,7 +426,32 @@ const Index = () => {
     console.log("Current Bid:", getCurrentBid());
     console.log("Minimum Bid:", getMinimumBid());
     
-    toast.info("Debug information logged to console");
+    // Enhanced status debugging
+    console.log("📊 Status Analysis:");
+    console.log("  Raw Status:", auction.status);
+    console.log("  Status Type:", typeof auction.status);
+    console.log("  Status String:", JSON.stringify(auction.status));
+    if (auction.status && typeof auction.status === 'object') {
+      console.log("  Status Keys:", Object.keys(auction.status));
+      console.log("  Status Variant:", auction.status.variant);
+      console.log("  Status Type Field:", auction.status.type);
+      console.log("  Status Fields:", auction.status.fields);
+      console.log("  Has 'Claimed' property:", auction.status.hasOwnProperty('Claimed'));
+      console.log("  Claimed value:", auction.status.Claimed);
+      console.log("  Variant === 'Claimed':", auction.status.variant === "Claimed");
+    }
+    console.log("  Creator Already Claimed (computed):", isCreatorAlreadyClaimed());
+    console.log("  Claim Method Info:", getClaimInfo());
+    
+    // Additional debug info
+    console.log("🎯 Claiming Eligibility:");
+    console.log("  End Time:", new Date(parseInt(auction.end_time)).toISOString());
+    console.log("  Current Time:", new Date().toISOString());
+    console.log("  Time Passed Since End:", Date.now() - parseInt(auction.end_time), "ms");
+    console.log("  Bid Count:", auction.bid_count);
+    console.log("  Highest Bidder:", auction.highest_bidder);
+    
+    toast.info("Comprehensive debug information logged to console");
   };
 
   if (loading) {
@@ -541,11 +626,11 @@ const Index = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-600 mb-2">Current Bid</p>
-                  <p className="text-3xl font-bold text-gray-900">{formatSui(getCurrentBid())} ETH</p>
+                  <p className="text-3xl font-bold text-gray-900">{formatSui(getCurrentBid())} SUI</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-600 mb-2">Min. Increment</p>
-                  <p className="text-xl font-semibold text-gray-700">0.1 ETH</p>
+                  <p className="text-xl font-semibold text-gray-700">0.1 SUI</p>
                 </div>
               </div>
               
@@ -656,9 +741,24 @@ const Index = () => {
                   <p className="text-green-100 mt-1">You won this auction!</p>
                 </div>
                 
-                <div className="bg-white/10 rounded-lg p-4 mb-6">
+                <div className="bg-white/10 rounded-lg p-4 mb-4">
                   <p className="text-center text-lg">
                     Winning bid: <span className="font-bold text-xl">{formatSui(getCurrentBid())} SUI</span>
+                  </p>
+                </div>
+
+                {/* Claim Status Information */}
+                <div className="bg-white/10 rounded-lg p-4 mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Claim Status:</span>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      isCreatorAlreadyClaimed() ? 'bg-blue-500/20 text-blue-100' : 'bg-yellow-500/20 text-yellow-100'
+                    }`}>
+                      {isCreatorAlreadyClaimed() ? 'Creator Paid' : 'Pending Payment'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-100">
+                    {getClaimInfo().explanation}
                   </p>
                 </div>
                 
@@ -675,7 +775,7 @@ const Index = () => {
                   ) : (
                     <div className="flex items-center justify-center">
                       <CheckCircle2 className="h-5 w-5 mr-2" />
-                      Claim NFT
+                      {getClaimInfo().text}
                     </div>
                   )}
                 </button>
