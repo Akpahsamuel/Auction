@@ -127,6 +127,11 @@ export const useAuctionHook = () => {
 
             // Log transaction details for debugging
             console.log("Transaction digest:", result.digest);
+            
+            // Reload page after successful auction creation
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
           },
           onError: (error) => {
             console.error("Failed to create auction:", error);
