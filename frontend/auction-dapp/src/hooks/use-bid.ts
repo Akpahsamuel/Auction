@@ -1,5 +1,5 @@
 import { Transaction } from "@mysten/sui/transactions";
-import { DEVNET_PACKAGE_ID } from "../contants";
+import { DEVNET_PACKAGE_ID, DEVNET_AUCTION_REGISTRY_ID } from "../contants";
 import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { toast } from "react-toastify";
@@ -77,6 +77,7 @@ export const useBidHook = () => {
 
       // Prepare move call arguments
       const auctionArg = tx.object(auctionId);
+      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
       const clockArg = tx.object("0x6"); // System clock object
 
       // Call the generic claim_nft function with proper type argument
@@ -85,6 +86,7 @@ export const useBidHook = () => {
         typeArguments: [nftType], // Pass the NFT type
         arguments: [
           auctionArg,
+          registryArg,
           clockArg,
         ],
       });
@@ -120,6 +122,7 @@ export const useBidHook = () => {
 
       // Prepare move call arguments
       const auctionArg = tx.object(auctionId);
+      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
       const clockArg = tx.object("0x6"); // System clock object
 
       // Call the generic claim_creator_proceeds function with proper type argument
@@ -128,6 +131,7 @@ export const useBidHook = () => {
         typeArguments: [nftType], // Pass the NFT type
         arguments: [
           auctionArg,
+          registryArg,
           clockArg,
         ],
       });
