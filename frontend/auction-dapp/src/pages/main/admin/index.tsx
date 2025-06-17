@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { useAdminHook } from "../../../hooks/use-admin";
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Settings, DollarSign, Wallet, RefreshCw, Shield } from "lucide-react";
+import { Settings, Coins, RefreshCw, Shield } from "lucide-react";
 
 const AdminPage = () => {
   const [registryFeeInfo, setRegistryFeeInfo] = useState<{
     feeBalance: number;
     treasuryAddress: string;
   } | null>(null);
-  const [capFeeBalance, setCapFeeBalance] = useState<number>(0);
   const [newTreasuryAddress, setNewTreasuryAddress] = useState("");
   const [loading, setLoading] = useState(true);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -16,10 +15,8 @@ const AdminPage = () => {
 
   const { 
     withdrawRegistryFees, 
-    withdrawCapFees, 
     updateTreasuryAddress,
     getRegistryFeeInfo,
-    getAuctionHouseCapFeeBalance
   } = useAdminHook();
   
   const currentAccount = useCurrentAccount();
@@ -27,13 +24,9 @@ const AdminPage = () => {
   const fetchFeeInfo = async () => {
     setLoading(true);
     try {
-      const [registryInfo, capBalance] = await Promise.all([
-        getRegistryFeeInfo(),
-        getAuctionHouseCapFeeBalance()
-      ]);
-      
+      const registryInfo = await getRegistryFeeInfo();
+      console.log("Raw registry fee info:", registryInfo); // Debug log
       setRegistryFeeInfo(registryInfo);
-      setCapFeeBalance(capBalance);
     } catch (error) {
       console.error("Error fetching fee info:", error);
     } finally {
@@ -53,19 +46,6 @@ const AdminPage = () => {
       await fetchFeeInfo();
     } catch (error) {
       console.error("Error withdrawing registry fees:", error);
-    } finally {
-      setIsWithdrawing(false);
-    }
-  };
-
-  const handleWithdrawCapFees = async () => {
-    setIsWithdrawing(true);
-    try {
-      await withdrawCapFees();
-      // Refresh fee info after withdrawal
-      await fetchFeeInfo();
-    } catch (error) {
-      console.error("Error withdrawing cap fees:", error);
     } finally {
       setIsWithdrawing(false);
     }
@@ -91,7 +71,9 @@ const AdminPage = () => {
   };
 
   const formatSui = (mist: number) => {
-    return (mist / 1_000_000_000).toFixed(4);
+    const suiValue = mist / 1_000_000_000;
+    console.log(`Converting ${mist} MIST to ${suiValue} SUI`); // Debug log
+    return suiValue.toFixed(4);
   };
 
   if (!currentAccount) {
@@ -119,14 +101,13 @@ const AdminPage = () => {
           </p>
         </div>
 
-        {/* Fee Information Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Registry Fees Card */}
+        {/* Fee Information Card */}
+        <div className="mb-8">
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <DollarSign className="h-6 w-6 text-green-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Registry Fees</h3>
+                <Coins className="h-6 w-6 text-green-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Collected Fees</h3>
               </div>
               <button
                 onClick={fetchFeeInfo}
@@ -140,55 +121,28 @@ const AdminPage = () => {
             {loading ? (
               <div className="animate-pulse">
                 <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
               </div>
             ) : (
               <div>
                 <p className="text-3xl font-bold text-green-600 mb-2">
                   {registryFeeInfo ? formatSui(registryFeeInfo.feeBalance) : '0.0000'} SUI
                 </p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Available for withdrawal from registry
+                <p className="text-sm text-gray-500 mb-2">
+                  Total fees collected from completed auctions (1% of winning bids)
                 </p>
+                {registryFeeInfo && (
+                  <p className="text-xs text-gray-400 mb-4">
+                    Raw value: {registryFeeInfo.feeBalance} MIST
+                  </p>
+                )}
                 <button
                   onClick={handleWithdrawRegistryFees}
                   disabled={isWithdrawing || !registryFeeInfo?.feeBalance}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isWithdrawing ? 'Withdrawing...' : 'Withdraw Registry Fees'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Auction House Cap Fees Card */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <Wallet className="h-6 w-6 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Cap Fees</h3>
-              </div>
-            </div>
-            
-            {loading ? (
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              </div>
-            ) : (
-              <div>
-                <p className="text-3xl font-bold text-blue-600 mb-2">
-                  {formatSui(capFeeBalance)} SUI
-                </p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Available for withdrawal from auction house cap
-                </p>
-                <button
-                  onClick={handleWithdrawCapFees}
-                  disabled={isWithdrawing || !capFeeBalance}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isWithdrawing ? 'Withdrawing...' : 'Withdraw Cap Fees'}
+                  {isWithdrawing ? 'Withdrawing...' : 'Withdraw Collected Fees'}
                 </button>
               </div>
             )}
@@ -204,7 +158,7 @@ const AdminPage = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Current Treasury Address
               </label>
-              <p className="text-sm font-mono bg-gray-100 p-2 rounded border break-all">
+              <p className="text-sm font-mono bg-gray-100 p-3 rounded border break-all">
                 {loading ? 'Loading...' : (registryFeeInfo?.treasuryAddress || 'Not available')}
               </p>
             </div>
@@ -226,21 +180,33 @@ const AdminPage = () => {
             <button
               onClick={handleUpdateTreasuryAddress}
               disabled={isUpdatingTreasury || !newTreasuryAddress.trim()}
-              className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isUpdatingTreasury ? 'Updating...' : 'Update Treasury Address'}
             </button>
           </div>
         </div>
 
-        {/* Admin Info */}
-        <div className="bg-blue-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">Admin Information</h3>
+        {/* Fee Collection Info */}
+        <div className="bg-blue-50 rounded-lg p-6 mb-8">
+          <h3 className="text-lg font-semibold text-blue-900 mb-3">Fee Collection Information</h3>
           <div className="space-y-2 text-sm text-blue-800">
+            <p><strong>Fee Rate:</strong> 1% of winning bid amount</p>
+            <p><strong>Collection Trigger:</strong> When auctions are completed (NFT claimed or creator claims proceeds)</p>
+            <p><strong>Fee Storage:</strong> All fees are stored in the auction registry</p>
+            <p><strong>Withdrawal:</strong> Only admin accounts with AuctionHouseCap can withdraw fees</p>
+            <p><strong>Currency:</strong> Fees are collected and stored in SUI</p>
+          </div>
+        </div>
+
+        {/* Admin Info */}
+        <div className="bg-gray-100 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Admin Information</h3>
+          <div className="space-y-2 text-sm text-gray-700">
             <p><strong>Connected Account:</strong> {currentAccount.address}</p>
             <p><strong>Network:</strong> Devnet</p>
-            <p><strong>Fee Percentage:</strong> 1% per auction</p>
-            <p className="text-xs text-blue-600 mt-4">
+            <p><strong>Package ID:</strong> {registryFeeInfo ? 'Connected' : 'Loading...'}</p>
+            <p className="text-xs text-gray-600 mt-4">
               Note: Only accounts with the AuctionHouseCap can perform admin actions. 
               If you encounter authorization errors, ensure you have the proper admin capabilities.
             </p>

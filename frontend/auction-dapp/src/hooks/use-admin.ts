@@ -29,7 +29,7 @@ export const useAdminHook = () => {
         {
           onSuccess: (result) => {
             console.log("Registry fees withdrawn successfully!", result);
-            toast.success("Registry fees withdrawn successfully!");
+            toast.success("Fees withdrawn successfully!");
             console.log("Transaction digest:", result.digest);
           },
           onError: (error) => {
@@ -41,44 +41,7 @@ export const useAdminHook = () => {
     } catch (error: any) {
       console.error("Error preparing withdraw registry fees transaction:", error);
       toast.error(
-        `Failed to withdraw registry fees: ${error.message || "Unknown error"}`,
-      );
-    }
-  };
-
-  const withdrawCapFees = async () => {
-    try {
-      const tx = new Transaction();
-
-      // Prepare move call arguments
-      const auctionHouseCapArg = tx.object(DEVNET_AUCTION_HOUSE_CAP);
-
-      // Call the withdraw_cap_fees function
-      tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction_house::withdraw_cap_fees`,
-        arguments: [
-          auctionHouseCapArg,
-        ],
-      });
-
-      signAndExecuteTransaction(
-        { transaction: tx },
-        {
-          onSuccess: (result) => {
-            console.log("Auction house cap fees withdrawn successfully!", result);
-            toast.success("Auction house cap fees withdrawn successfully!");
-            console.log("Transaction digest:", result.digest);
-          },
-          onError: (error) => {
-            console.error("Failed to withdraw auction house cap fees:", error);
-            handleAdminError(error);
-          },
-        },
-      );
-    } catch (error: any) {
-      console.error("Error preparing withdraw cap fees transaction:", error);
-      toast.error(
-        `Failed to withdraw cap fees: ${error.message || "Unknown error"}`,
+        `Failed to withdraw fees: ${error.message || "Unknown error"}`,
       );
     }
   };
@@ -125,8 +88,11 @@ export const useAdminHook = () => {
   };
 
   const getRegistryFeeInfo = async () => {
+    console.log("=== getRegistryFeeInfo called ===");
     try {
       const client = new SuiClient({ url: getFullnodeUrl("devnet") });
+      
+      console.log("Fetching registry fee info from:", DEVNET_AUCTION_REGISTRY_ID);
       
       // Call the view function to get registry fee info
       const result = await client.devInspectTransactionBlock({
@@ -144,27 +110,42 @@ export const useAdminHook = () => {
         sender: "0x0000000000000000000000000000000000000000000000000000000000000000",
       });
 
+      console.log("Raw devInspectTransactionBlock result:", result);
+
       if (result.results?.[0]?.returnValues) {
         const [feeBalanceBytes, treasuryAddressBytes] = result.results[0].returnValues;
         
-        // Convert bytes to hex string and then to BigInt
-        const feeBalanceHex = Array.from(new Uint8Array(feeBalanceBytes[0]))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-        const feeBalance = BigInt("0x" + feeBalanceHex);
+        console.log("Raw fee balance bytes:", feeBalanceBytes);
+        console.log("Fee balance bytes as array:", Array.from(new Uint8Array(feeBalanceBytes[0])));
+        console.log("Raw treasury address bytes:", treasuryAddressBytes);
+        
+        // Use DataView for reliable u64 conversion (this worked in our test)
+        const feeBalanceArray = new Uint8Array(feeBalanceBytes[0]);
+        const dataView = new DataView(feeBalanceArray.buffer);
+        const feeBalance = Number(dataView.getBigUint64(0, true)); // little-endian
+        
+        console.log("Fee balance (MIST) - DataView:", feeBalance);
+        console.log("Fee balance (SUI) - DataView:", feeBalance / 1_000_000_000);
         
         // Convert address bytes to hex string
-        const treasuryAddressHex = Array.from(new Uint8Array(treasuryAddressBytes[0]))
+        const treasuryAddressArray = new Uint8Array(treasuryAddressBytes[0]);
+        const treasuryAddress = "0x" + Array.from(treasuryAddressArray)
           .map(b => b.toString(16).padStart(2, '0'))
           .join('');
-        const treasuryAddress = "0x" + treasuryAddressHex;
         
-        return {
-          feeBalance: Number(feeBalance),
+        console.log("Treasury address:", treasuryAddress);
+        
+        const feeInfo = {
+          feeBalance, // This is in MIST
           treasuryAddress,
         };
+        
+        console.log("Final fee info object:", feeInfo);
+        
+        return feeInfo;
       }
       
+      console.log("No return values found in result");
       return null;
     } catch (error) {
       console.error("Error fetching registry fee info:", error);
@@ -172,51 +153,10 @@ export const useAdminHook = () => {
     }
   };
 
-  const getAuctionHouseCapFeeBalance = async () => {
-    try {
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
-      // Call the view function to get auction house cap fee balance
-      const result = await client.devInspectTransactionBlock({
-        transactionBlock: (() => {
-          const tx = new Transaction();
-          const auctionHouseCapArg = tx.object(DEVNET_AUCTION_HOUSE_CAP);
-          
-          tx.moveCall({
-            target: `${DEVNET_PACKAGE_ID}::auction_house::get_auction_house_fee_balance`,
-            arguments: [auctionHouseCapArg],
-          });
-          
-          return tx;
-        })(),
-        sender: "0x0000000000000000000000000000000000000000000000000000000000000000",
-      });
-
-      if (result.results?.[0]?.returnValues) {
-        const [feeBalanceBytes] = result.results[0].returnValues;
-        
-        // Convert bytes to hex string and then to BigInt
-        const feeBalanceHex = Array.from(new Uint8Array(feeBalanceBytes[0]))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-        const feeBalance = BigInt("0x" + feeBalanceHex);
-        
-        return Number(feeBalance);
-      }
-      
-      return 0;
-    } catch (error) {
-      console.error("Error fetching auction house cap fee balance:", error);
-      return 0;
-    }
-  };
-
   return { 
     withdrawRegistryFees, 
-    withdrawCapFees, 
     updateTreasuryAddress,
     getRegistryFeeInfo,
-    getAuctionHouseCapFeeBalance
   };
 };
 
