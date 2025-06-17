@@ -18,9 +18,6 @@ export interface AuctionCardType {
   uploader: string;
   nftType?: string;
   onCancelSuccess?: () => void;
-  isCompleted?: boolean;
-  winner?: string;
-  completionTime?: string;
 }
 
 export function AuctionCard({
@@ -33,9 +30,6 @@ export function AuctionCard({
   uploader,
   nftType,
   onCancelSuccess,
-  isCompleted = false,
-  winner,
-  completionTime,
 }: AuctionCardType) {
   const currentAccount = useCurrentAccount();
   const { cancelAuction } = useBidHook();
@@ -46,14 +40,7 @@ export function AuctionCard({
     return currentAccount?.address === uploader;
   };
 
-  const isCurrentUserWinner = () => {
-    return isCompleted && currentAccount?.address === winner;
-  };
-
   const canCancelAuction = () => {
-    // Can't cancel completed auctions
-    if (isCompleted) return false;
-    
     const isCreator = isCurrentUserCreator();
     // Convert to number to handle different data types from blockchain
     const bidCount = Number(num_of_bids) || 0;
@@ -64,8 +51,6 @@ export function AuctionCard({
   };
 
   const getTimeRemaining = () => {
-    if (isCompleted) return null;
-    
     const now = new Date();
     const endDate = new Date(end_time);
     const diff = endDate.getTime() - now.getTime();
@@ -149,19 +134,9 @@ export function AuctionCard({
 
       {/* Status badges */}
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
-        {isCompleted && (
-          <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
-            Completed
-          </div>
-        )}
-        {isCurrentUserCreator() && !isCompleted && (
+        {isCurrentUserCreator() && (
           <div className="bg-purple-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
             Your Auction
-          </div>
-        )}
-        {isCurrentUserWinner() && (
-          <div className="bg-yellow-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
-            You Won!
           </div>
         )}
       </div>
@@ -176,9 +151,7 @@ export function AuctionCard({
           <img
             src={image}
             alt="NFT Preview"
-            className={`h-full w-full object-cover transition-all duration-300 ${
-              isCompleted ? 'grayscale group-hover:grayscale-0' : 'group-hover:scale-110'
-            }`}
+            className="h-full w-full object-cover transition-all duration-300 group-hover:scale-110"
             onError={(e) => {
               // Fallback to placeholder if image fails to load
               (e.target as HTMLImageElement).src = "/api/placeholder/300/300";
@@ -193,12 +166,10 @@ export function AuctionCard({
                 <TrendingUp size={14} />
                 <span className="text-sm font-medium">{num_of_bids} bids</span>
               </div>
-              {!isCompleted && (
-                <div className="flex items-center gap-1 bg-blue-500/90 rounded-full px-3 py-1">
-                  <Clock size={14} />
-                  <span className="text-sm font-medium">{getTimeRemaining()}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1 bg-blue-500/90 rounded-full px-3 py-1">
+                <Clock size={14} />
+                <span className="text-sm font-medium">{getTimeRemaining()}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -218,25 +189,10 @@ export function AuctionCard({
             </span>
           </div>
 
-          {/* Winner info for completed auctions */}
-          {isCompleted && winner && (
-            <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <Gavel size={14} className="text-green-600" />
-                <span className="text-sm font-medium text-green-800">Winner</span>
-              </div>
-              <p className="text-sm text-green-700 truncate">
-                {winner === currentAccount?.address ? "You" : `${winner.slice(0, 8)}...${winner.slice(-8)}`}
-              </p>
-            </div>
-          )}
-
           {/* Bid information */}
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div>
-              <p className="text-xs text-gray-500 mb-1">
-                {isCompleted ? "Final Bid" : "Current Bid"}
-              </p>
+              <p className="text-xs text-gray-500 mb-1">Current Bid</p>
               <div className="flex items-center gap-2">
                 <img src={suiIcon} className="w-5 h-5" alt="SUI" />
                 <span className="font-bold text-lg text-gray-900">{current_bid}</span>
@@ -244,17 +200,10 @@ export function AuctionCard({
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500 mb-1">
-                {isCompleted ? "Completed" : "Ends"}
-              </p>
+              <p className="text-xs text-gray-500 mb-1">Ends</p>
               <div className="flex items-center gap-1 text-sm font-medium text-gray-700">
                 <Calendar size={14} />
-                <span>
-                  {isCompleted 
-                    ? moment(completionTime).format("MMM DD")
-                    : moment(end_time).format("MMM DD, HH:mm")
-                  }
-                </span>
+                <span>{moment(end_time).format("MMM DD, HH:mm")}</span>
               </div>
             </div>
           </div>
@@ -271,15 +220,13 @@ export function AuctionCard({
             <Eye size={16} />
             <span>View Details</span>
           </button>
-          {!isCompleted && (
-            <button 
-              onClick={handlePlaceBid}
-              className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-md"
-            >
-              <Gavel size={16} />
-              <span>Place Bid</span>
-            </button>
-          )}
+          <button 
+            onClick={handlePlaceBid}
+            className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-md"
+          >
+            <Gavel size={16} />
+            <span>Place Bid</span>
+          </button>
         </div>
 
         {/* Blockchain explorer link */}
@@ -294,32 +241,21 @@ export function AuctionCard({
 
         {/* Additional status information */}
         <div className="text-center">
-          {isCompleted ? (
-            <div className="text-xs bg-green-100 text-green-700 py-2 px-3 rounded-lg">
+          {isCurrentUserCreator() && (
+            <div className="text-xs bg-purple-100 text-purple-700 py-2 px-3 rounded-lg">
               <div className="flex items-center justify-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                Auction completed with {num_of_bids} total bids
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                Your auction {canCancelAuction() && "• Can be cancelled"}
               </div>
             </div>
-          ) : (
-            <>
-              {isCurrentUserCreator() && (
-                <div className="text-xs bg-purple-100 text-purple-700 py-2 px-3 rounded-lg">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    Your auction {canCancelAuction() && "• Can be cancelled"}
-                  </div>
-                </div>
-              )}
-              {!isCurrentUserCreator() && (
-                <div className="text-xs bg-blue-100 text-blue-700 py-2 px-3 rounded-lg">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    Active auction • Place your bid now
-                  </div>
-                </div>
-              )}
-            </>
+          )}
+          {!isCurrentUserCreator() && (
+            <div className="text-xs bg-blue-100 text-blue-700 py-2 px-3 rounded-lg">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                Active auction • Place your bid now
+              </div>
+            </div>
           )}
         </div>
       </div>

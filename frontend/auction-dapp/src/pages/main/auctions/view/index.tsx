@@ -109,13 +109,6 @@ const Index = () => {
         throw new Error("Could not determine NFT type for bidding");
       }
       
-      console.log("Placing bid:", {
-        auctionId: id,
-        bidAmount: bidValue,
-        nftType,
-        minimumBid
-      });
-      
       await placeBid(id, bidValue, nftType);
       setBidAmount("");
       
@@ -163,23 +156,9 @@ const Index = () => {
       // Check if creator has already claimed proceeds using the helper function
       const creatorHasClaimedProceeds = isCreatorAlreadyClaimed();
       
-      console.log("🔍 Detailed Claiming Debug:", {
-        auctionId: id,
-        nftType,
-        isWinner: isCurrentUserWinner(),
-        isEnded: isAuctionEnded(),
-        isCreatorAlreadyClaimed: creatorHasClaimedProceeds,
-        rawAuctionStatus: auction.status,
-        statusType: typeof auction.status,
-        statusKeys: auction.status && typeof auction.status === 'object' ? Object.keys(auction.status) : 'N/A',
-        claimMethodSelected: creatorHasClaimedProceeds ? 'claim_nft_after_creator_claim' : 'claim_nft'
-      });
-      
       if (creatorHasClaimedProceeds) {
-        console.log("✅ Using claim_nft_after_creator_claim function...");
         await claimNftAfterCreatorClaim(id, nftType);
       } else {
-        console.log("✅ Using standard claim_nft function...");
         await claimNft(id, nftType);
       }
       
@@ -268,50 +247,33 @@ const Index = () => {
 
   const extractNftType = (auction: any) => {
     if (!auction?.data?.type) {
-      console.error("Auction data or type not found:", auction);
       return "";
     }
     
     const typeString = auction.data.type;
-    console.log("Extracting NFT type from:", typeString);
     
     // Handle generic auction types like: 0x...::auction_house::Auction<0x...::nft::NFT>
     const match = typeString.match(/<(.+)>/);
     if (match && match[1]) {
-      const nftType = match[1].trim();
-      console.log("Extracted NFT type:", nftType);
-      return nftType;
+      return match[1].trim();
     }
     
-    console.error("Could not extract NFT type from:", typeString);
     return "";
   };
 
   // Helper function to extract NFT image URL from auction data
   const getNftImageUrl = () => {
-    if (isHistoryView) {
-      return auction.nft_image_url || "";
-    } else {
-      return auction.nft?.fields?.nft?.fields?.image_url || "";
-    }
+    return auction.nft?.fields?.nft?.fields?.image_url || "";
   };
 
   // Helper function to extract NFT name from auction data
   const getNftName = () => {
-    if (isHistoryView) {
-      return auction.nft_name || "Digital Collectible";
-    } else {
-      return auction.nft?.fields?.nft?.fields?.name || "Digital Collectible";
-    }
+    return auction.nft?.fields?.nft?.fields?.name || "Digital Collectible";
   };
 
   // Helper function to extract NFT description from auction data
   const getNftDescription = () => {
-    if (isHistoryView) {
-      return auction.nft_description || "";
-    } else {
-      return auction.nft?.fields?.nft?.fields?.description || "";
-    }
+    return auction.nft?.fields?.nft?.fields?.description || "";
   };
 
   const formatSui = (mist: string | number) => {
@@ -336,13 +298,8 @@ const Index = () => {
     const fields = auctionData.data.content.fields;
     
     // For active auctions, check highest_bidder
-    if (!auctionData.isHistory && fields.highest_bidder) {
+    if (fields.highest_bidder) {
       return currentAccount.address === fields.highest_bidder;
-    }
-    
-    // For auction histories, check winner
-    if (auctionData.isHistory && fields.winner) {
-      return currentAccount.address === fields.winner;
     }
     
     return false;
@@ -351,11 +308,6 @@ const Index = () => {
   const getCurrentBid = () => {
     if (!auctionData?.data?.content?.fields) return "0";
     const fields = auctionData.data.content.fields;
-    
-    // For auction histories, use final_bid
-    if (auctionData.isHistory) {
-      return fields.final_bid || "0";
-    }
     
     // For active auctions, use current_bid or starting_bid
     if (fields.bid_count > 0) {
@@ -367,7 +319,6 @@ const Index = () => {
 
   const getMinimumBid = () => {
     if (!auctionData?.data?.content?.fields) {
-      console.warn("Auction data not available for minimum bid calculation");
       return "1";
     }
     
@@ -376,12 +327,6 @@ const Index = () => {
     
     // Add minimum increment (0.001 SUI) and round up to next whole SUI
     const minimumBidSui = Math.ceil(currentBidSui + 0.001);
-    
-    console.log("Minimum bid calculation:", {
-      currentBidMist,
-      currentBidSui,
-      minimumBidSui
-    });
     
     return minimumBidSui.toString();
   };
@@ -394,17 +339,6 @@ const Index = () => {
     const bidCount = Number(auction.bid_count) || 0;
     const noBids = bidCount === 0;
     const notEnded = !isAuctionEnded();
-    
-    // Debug logging
-    console.log('canCancelAuction debug:', {
-      userIsCreator,
-      bidCount,
-      bidCountRaw: auction.bid_count,
-      bidCountType: typeof auction.bid_count,
-      noBids,
-      notEnded,
-      result: userIsCreator && noBids && notEnded
-    });
     
     return userIsCreator && noBids && notEnded;
   };
@@ -462,7 +396,6 @@ const Index = () => {
     console.log("User is winner:", isCurrentUserWinner());
     console.log("Auction ended:", isAuctionEnded());
     console.log("Can cancel:", canCancelAuction());
-    console.log("Is history view:", !!auctionData.isHistory);
     console.log("NFT Type:", extractNftType(auctionData));
     console.log("========================");
   };
@@ -512,7 +445,6 @@ const Index = () => {
   const userIsCreator = isCurrentUserCreator();
   const userIsWinner = isCurrentUserWinner();
   const canCancel = canCancelAuction();
-  const isHistoryView = !!auctionData.isHistory;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
@@ -527,12 +459,6 @@ const Index = () => {
               >
                 ← Back to Auctions
               </button>
-              {isHistoryView && (
-                <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                  <CheckCircle2 className="h-4 w-4 mr-1" />
-                  Completed Auction
-                </div>
-              )}
             </div>
             <div className="flex items-center space-x-4">
               <button
@@ -566,7 +492,6 @@ const Index = () => {
             {/* NFT Image */}
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
               <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                {/* Check for both active and completed auction images */}
                 {getNftImageUrl() ? (
                   <div className="w-full h-full">
                     <img 
@@ -605,23 +530,19 @@ const Index = () => {
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <Hash className="h-6 w-6 text-indigo-500 mr-2" />
-                {isHistoryView ? "Historical " : ""}NFT Details
+                NFT Details
               </h3>
               
               <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-6">
                 <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      {isHistoryView ? "Original Auction ID" : "NFT ID"}
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">NFT ID</label>
                     <div className="bg-white p-3 rounded-lg border">
-                      <p className="text-sm font-mono text-gray-900 break-all">
-                        {isHistoryView ? auction.original_auction_id : auction.nft_id}
-                      </p>
+                      <p className="text-sm font-mono text-gray-900 break-all">{auction.nft_id}</p>
                     </div>
                   </div>
                   
-                  {/* NFT Name - Show for both active and completed auctions */}
+                  {/* NFT Name */}
                   {getNftName() !== "Digital Collectible" && (
                     <div>
                       <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Name</label>
@@ -631,7 +552,7 @@ const Index = () => {
                     </div>
                   )}
                   
-                  {/* NFT Description - Show for both active and completed auctions */}
+                  {/* NFT Description */}
                   {getNftDescription() && (
                     <div>
                       <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Description</label>
@@ -648,26 +569,10 @@ const Index = () => {
                     </div>
                   </div>
                   
-                  {isHistoryView && auction.winner && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">Winner</label>
-                      <div className="bg-white p-3 rounded-lg border">
-                        <p className="text-sm font-mono text-gray-900 break-all">{auction.winner}</p>
-                      </div>
-                    </div>
-                  )}
-                  
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      {isHistoryView ? "Completion Time" : "NFT Type"}
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">NFT Type</label>
                     <div className="bg-white p-3 rounded-lg border">
-                      <p className="text-sm font-mono text-gray-900 break-all">
-                        {isHistoryView 
-                          ? new Date(parseInt(auction.completion_time)).toLocaleString()
-                          : extractNftType(auctionData)
-                        }
-                      </p>
+                      <p className="text-sm font-mono text-gray-900 break-all">{extractNftType(auctionData)}</p>
                     </div>
                   </div>
                   
@@ -695,15 +600,8 @@ const Index = () => {
             {/* Auction Status and Time */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {isHistoryView ? "Auction Results" : "Current Auction"}
-                </h2>
-                {isHistoryView ? (
-                  <div className="flex items-center text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm font-medium">
-                    <Trophy className="h-4 w-4 mr-1" />
-                    Completed
-                  </div>
-                ) : auctionEnded ? (
+                <h2 className="text-2xl font-bold text-gray-900">Current Auction</h2>
+                {auctionEnded ? (
                   <div className="flex items-center text-red-600 bg-red-50 px-3 py-1 rounded-full text-sm font-medium">
                     <Clock className="h-4 w-4 mr-1" />
                     Ended
@@ -717,7 +615,7 @@ const Index = () => {
               </div>
 
               {/* Time Display */}
-              {!isHistoryView && (
+              {!auctionEnded && (
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 mb-6">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                     <div>
@@ -744,18 +642,14 @@ const Index = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
                   <Calendar className="h-5 w-5 text-gray-500 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-gray-600">
-                    {isHistoryView ? "Started" : "Start Time"}
-                  </p>
+                  <p className="text-sm font-medium text-gray-600">Start Time</p>
                   <p className="text-sm text-gray-900">
                     {new Date(parseInt(auction.start_time)).toLocaleString()}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
                   <Calendar className="h-5 w-5 text-gray-500 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-gray-600">
-                    {isHistoryView ? "Ended" : "End Time"}
-                  </p>
+                  <p className="text-sm font-medium text-gray-600">End Time</p>
                   <p className="text-sm text-gray-900">
                     {new Date(parseInt(auction.end_time)).toLocaleString()}
                   </p>
@@ -767,26 +661,18 @@ const Index = () => {
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center">
-                  <p className="text-sm font-medium text-gray-600 mb-2">
-                    {isHistoryView ? "Final Bid" : "Current Bid"}
-                  </p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Current Bid</p>
                   <p className="text-3xl font-bold text-gray-900">{formatSui(getCurrentBid())} SUI</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-gray-600 mb-2">
-                    {isHistoryView ? "Starting Bid" : "Min. Increment"}
-                  </p>
-                  <p className="text-xl font-semibold text-gray-700">
-                    {isHistoryView ? formatSui(auction.starting_bid) + " SUI" : "0.1 SUI"}
-                  </p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Min. Increment</p>
+                  <p className="text-xl font-semibold text-gray-700">0.1 SUI</p>
                 </div>
               </div>
               
               <div className="mt-6 grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {isHistoryView ? (auction.total_bids || 0) : (auction.bid_count || 0)}
-                  </p>
+                  <p className="text-2xl font-bold text-purple-600">{auction.bid_count || 0}</p>
                   <p className="text-sm text-gray-600">Total Bids</p>
                 </div>
                 <div>
@@ -800,16 +686,13 @@ const Index = () => {
               </div>
 
               {/* Winner/Bidder Information */}
-              {((isHistoryView && auction.winner) || (!isHistoryView && auction.highest_bidder)) && (
+              {auction.highest_bidder && (
                 <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
                   <div className="flex items-center">
                     <User className="h-4 w-4 text-yellow-600 mr-2" />
-                    <span className="text-sm font-medium text-yellow-800">
-                      {isHistoryView ? "Winner:" : "Leading Bidder:"}
-                    </span>
+                    <span className="text-sm font-medium text-yellow-800">Leading Bidder:</span>
                     <span className="text-sm font-mono text-yellow-900 ml-2">
-                      {(isHistoryView ? auction.winner : auction.highest_bidder)?.slice(0, 6)}...
-                      {(isHistoryView ? auction.winner : auction.highest_bidder)?.slice(-4)}
+                      {auction.highest_bidder.slice(0, 6)}...{auction.highest_bidder.slice(-4)}
                     </span>
                   </div>
                 </div>
@@ -817,7 +700,7 @@ const Index = () => {
             </div>
 
             {/* Bidding Interface - Only for active auctions */}
-            {!isHistoryView && !auctionEnded && !userIsCreator && (
+            {!auctionEnded && !userIsCreator && (
               <div className="bg-white rounded-2xl shadow-xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-6">Place Your Bid</h3>
                 
@@ -836,7 +719,7 @@ const Index = () => {
                         placeholder={`Minimum: ${getMinimumBid()} SUI`}
                         step="0.1"
                         min={getMinimumBid()}
-                        disabled={auctionEnded || userIsCreator || isHistoryView}
+                        disabled={auctionEnded || userIsCreator}
                       />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                         <img src="/src/assets/icons/sui-icon.png" alt="SUI" className="h-5 w-5" />
@@ -849,7 +732,7 @@ const Index = () => {
 
                   <button
                     onClick={handlePlaceBid}
-                    disabled={!bidAmount || isPlacingBid || auctionEnded || userIsCreator || isHistoryView}
+                    disabled={!bidAmount || isPlacingBid || auctionEnded || userIsCreator}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95"
                   >
                     {isPlacingBid ? (
@@ -861,8 +744,6 @@ const Index = () => {
                       "Auction Ended"
                     ) : userIsCreator ? (
                       "Cannot Bid on Own Auction"
-                    ) : isHistoryView ? (
-                      "Auction Completed"
                     ) : (
                       "Place Bid"
                     )}
@@ -871,8 +752,8 @@ const Index = () => {
               </div>
             )}
 
-            {/* Auction Ended Notice - Show for ended auctions that aren't history view yet */}
-            {!isHistoryView && auctionEnded && !userIsCreator && !userIsWinner && (
+            {/* Auction Ended Notice - Show for ended auctions */}
+            {auctionEnded && !userIsCreator && !userIsWinner && (
               <div className="bg-white rounded-2xl shadow-xl p-6">
                 <div className="text-center py-8">
                   <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -897,7 +778,7 @@ const Index = () => {
             )}
 
             {/* Action Buttons for Creator/Winner */}
-            {!isHistoryView && (userIsCreator || (auctionEnded && userIsWinner)) && (
+            {(userIsCreator || (auctionEnded && userIsWinner)) && (
               <div className="bg-white rounded-2xl shadow-xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">
                   {userIsCreator ? "Creator Actions" : "Winner Actions"}
@@ -928,7 +809,7 @@ const Index = () => {
                     {isCreatorAlreadyClaimed() && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <div className="flex items-center">
-                          <CheckCircle2 className="h-5 w-5 text-blue-600 mr-2" />
+                          <Trophy className="h-5 w-5 text-blue-600 mr-2" />
                           <span className="font-medium text-blue-800">Proceeds Claimed</span>
                         </div>
                         <p className="text-sm text-blue-700 mt-1">
@@ -1006,68 +887,6 @@ const Index = () => {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Completed Auction Summary */}
-            {isHistoryView && (
-              <div className="bg-white rounded-2xl shadow-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                  <Trophy className="h-6 w-6 text-green-500 mr-2" />
-                  Auction Completed
-                </h3>
-                
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Final Sale Price:</span>
-                        <div className="font-bold text-lg text-green-600">
-                          {formatSui(auction.final_bid)} SUI
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Total Bids:</span>
-                        <div className="font-bold text-lg">
-                          {auction.total_bids || 0}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Winner:</span>
-                        <div className="font-mono text-sm break-all">
-                          {auction.winner ? 
-                            `${auction.winner.slice(0, 8)}...${auction.winner.slice(-8)}` : 
-                            "No winner"
-                          }
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Completed:</span>
-                        <div className="text-sm">
-                          {new Date(parseInt(auction.completion_time)).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {userIsCreator && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center">
-                        <CheckCircle2 className="h-5 w-5 text-blue-600 mr-2" />
-                        <span className="font-medium text-blue-800">You were the creator of this auction</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {userIsWinner && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <div className="flex items-center">
-                        <Trophy className="h-5 w-5 text-yellow-600 mr-2" />
-                        <span className="font-medium text-yellow-800">You won this auction!</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
           </div>

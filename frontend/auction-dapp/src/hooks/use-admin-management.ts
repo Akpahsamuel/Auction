@@ -46,9 +46,7 @@ export function useAdminManagement() {
         // For now, we'll need a fallback approach since we can't directly query by type
         console.log("Found admin events:", response.data);
         
-        // Alternative: If you know the registry object ID, you can use it directly
-        // For demo purposes, we'll handle this differently in the actual implementation
-      }
+     }
       
     } catch (error) {
       console.error("Error fetching admin registry:", error);
