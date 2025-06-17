@@ -871,6 +871,31 @@ const Index = () => {
               </div>
             )}
 
+            {/* Auction Ended Notice - Show for ended auctions that aren't history view yet */}
+            {!isHistoryView && auctionEnded && !userIsCreator && !userIsWinner && (
+              <div className="bg-white rounded-2xl shadow-xl p-6">
+                <div className="text-center py-8">
+                  <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Auction Has Ended</h3>
+                  <p className="text-gray-600 mb-4">This auction concluded at {new Date(parseInt(auction.end_time)).toLocaleString()}</p>
+                  {auction.highest_bidder ? (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-sm text-blue-700">
+                        <strong>Winner:</strong> {auction.highest_bidder.slice(0, 8)}...{auction.highest_bidder.slice(-8)}
+                      </p>
+                      <p className="text-sm text-blue-700 mt-1">
+                        <strong>Final Bid:</strong> {formatSui(getCurrentBid())} SUI
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <p className="text-sm text-gray-600">No bids were placed on this auction</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons for Creator/Winner */}
             {!isHistoryView && (userIsCreator || (auctionEnded && userIsWinner)) && (
               <div className="bg-white rounded-2xl shadow-xl p-6">

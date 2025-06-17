@@ -1,5 +1,5 @@
 import { Transaction } from "@mysten/sui/transactions";
-import { DEVNET_PACKAGE_ID, DEVNET_AUCTION_REGISTRY_ID } from "../contants";
+import { getCurrentAuctionRegistry, getCurrentPackageId, SYSTEM_CLOCK_ID } from "../contants";
 import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { toast } from "react-toastify";
 
@@ -20,14 +20,14 @@ export const useBidHook = () => {
       // Prepare move call arguments
       const auctionArg = tx.object(auctionId);
       const bidAmountMistArg = tx.pure.u64(bidAmountMist); // Pass MIST directly to contract
-      const clockArg = tx.object("0x6"); // System clock object
+      const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
 
       // Split coins for the bid amount (payment in MIST)
       const [bidCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(bidAmountMist)]);
 
       // Call the generic place_bid function with proper type argument
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction_house::place_bid`,
+        target: `${getCurrentPackageId()}::auction_house::place_bid`,
         typeArguments: [nftType], // Pass the NFT type
         arguments: [
           auctionArg,
@@ -68,12 +68,12 @@ export const useBidHook = () => {
 
       // Prepare move call arguments
       const auctionArg = tx.object(auctionId);
-      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
-      const clockArg = tx.object("0x6"); // System clock object
+      const registryArg = tx.object(getCurrentAuctionRegistry());
+      const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
 
       // Call the generic claim_nft function with proper type argument
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction_house::claim_nft`,
+        target: `${getCurrentPackageId()}::auction_house::claim_nft`,
         typeArguments: [nftType], // Pass the NFT type
         arguments: [
           auctionArg,
@@ -113,12 +113,12 @@ export const useBidHook = () => {
 
       // Prepare move call arguments
       const auctionArg = tx.object(auctionId);
-      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
-      const clockArg = tx.object("0x6"); // System clock object
+      const registryArg = tx.object(getCurrentAuctionRegistry());
+      const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
 
       // Call the generic claim_nft_after_creator_claim function with proper type argument
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction_house::claim_nft_after_creator_claim`,
+        target: `${getCurrentPackageId()}::auction_house::claim_nft_after_creator_claim`,
         typeArguments: [nftType], // Pass the NFT type
         arguments: [
           auctionArg,
@@ -158,12 +158,12 @@ export const useBidHook = () => {
 
       // Prepare move call arguments
       const auctionArg = tx.object(auctionId);
-      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
-      const clockArg = tx.object("0x6"); // System clock object
+      const registryArg = tx.object(getCurrentAuctionRegistry());
+      const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
 
       // Call the generic claim_creator_proceeds function with proper type argument
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction_house::claim_creator_proceeds`,
+        target: `${getCurrentPackageId()}::auction_house::claim_creator_proceeds`,
         typeArguments: [nftType], // Pass the NFT type
         arguments: [
           auctionArg,
@@ -203,11 +203,11 @@ export const useBidHook = () => {
 
       // Prepare move call arguments
       const auctionArg = tx.object(auctionId);
-      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
+      const registryArg = tx.object(getCurrentAuctionRegistry());
 
       // Call the generic cancel_auction function with proper type argument
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction_house::cancel_auction`,
+        target: `${getCurrentPackageId()}::auction_house::cancel_auction`,
         typeArguments: [nftType], // Pass the NFT type
         arguments: [
           auctionArg,

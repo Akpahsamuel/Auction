@@ -1,6 +1,6 @@
 import { Transaction } from "@mysten/sui/transactions";
 import { Auction } from "../types";
-import { DEVNET_AUCTION_REGISTRY_ID, DEVNET_PACKAGE_ID } from "../contants";
+import { getCurrentAuctionRegistry, getCurrentPackageId, SYSTEM_CLOCK_ID } from "../contants";
 import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { toast } from "react-toastify";
@@ -74,7 +74,7 @@ export const useAuctionHook = () => {
       console.log(`Creating auction with starting bid: ${auction.startingBid} SUI (${startingBidMist} MIST)`);
 
       // Prepare move call arguments
-      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
+      const registryArg = tx.object(getCurrentAuctionRegistry());
       const nftArg = tx.object(auction.nftId);
       const titleArg = tx.pure.vector(
         "u8",
@@ -98,11 +98,11 @@ export const useAuctionHook = () => {
         "u8",
         Array.from(new TextEncoder().encode(nftImageUrl)),
       );
-      const clockArg = tx.object("0x6"); // System clock object
+      const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
 
       // Call the generic create_auction function with proper type argument
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::auction_house::create_auction`,
+        target: `${getCurrentPackageId()}::auction_house::create_auction`,
         typeArguments: [nftType], // Pass the discovered NFT type
         arguments: [
           registryArg,
@@ -191,7 +191,7 @@ export const useAuctionHook = () => {
     // verifyRegistry();
     try {
       const registryObjectResponse = await client.getObject({
-        id: DEVNET_AUCTION_REGISTRY_ID,
+        id: getCurrentAuctionRegistry(),
         options: { showContent: true },
       });
 
@@ -284,7 +284,7 @@ export const useAuctionHook = () => {
       console.log("Auction not found as active, checking auction histories...");
       
       const registryObjectResponse = await client.getObject({
-        id: DEVNET_AUCTION_REGISTRY_ID,
+        id: getCurrentAuctionRegistry(),
         options: { showContent: true },
       });
 
@@ -373,7 +373,7 @@ export const useAuctionHook = () => {
     const client = new SuiClient({ url: getFullnodeUrl("devnet") });
     try {
       const registryObjectResponse = await client.getObject({
-        id: DEVNET_AUCTION_REGISTRY_ID,
+        id: getCurrentAuctionRegistry(),
         options: { showContent: true },
       });
 

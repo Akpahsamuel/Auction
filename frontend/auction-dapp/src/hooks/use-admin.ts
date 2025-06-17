@@ -1,5 +1,5 @@
 import { Transaction } from "@mysten/sui/transactions";
-import { DEVNET_PACKAGE_ID, DEVNET_AUCTION_REGISTRY_ID } from "../contants";
+import { getCurrentAuctionRegistry, getCurrentPackageId } from "../contants";
 import { useSignAndExecuteTransaction, useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
 import { SuiClient, getFullnodeUrl, SuiObjectData } from "@mysten/sui/client";
 import { toast } from "react-toastify";
@@ -34,7 +34,7 @@ export const useAdminHook = () => {
       const ownedObjects = await client.getOwnedObjects({
         owner: currentAccount.address,
         filter: {
-          StructType: `${DEVNET_PACKAGE_ID}::admin::AuctionHouseCap`
+          StructType: `${getCurrentPackageId()}::admin::AuctionHouseCap`
         },
         options: {
           showContent: true,
@@ -77,11 +77,11 @@ export const useAdminHook = () => {
 
       // Prepare move call arguments using the user's admin capability
       const auctionHouseCapArg = tx.object(adminCapId);
-      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
+      const registryArg = tx.object(getCurrentAuctionRegistry());
 
       // Call the withdraw_registry_fees function from admin module
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::admin::withdraw_registry_fees`,
+        target: `${getCurrentPackageId()}::admin::withdraw_fees`,
         arguments: [
           auctionHouseCapArg,
           registryArg,
@@ -123,12 +123,12 @@ export const useAdminHook = () => {
 
       // Prepare move call arguments using the user's admin capability
       const auctionHouseCapArg = tx.object(adminCapId);
-      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
+      const registryArg = tx.object(getCurrentAuctionRegistry());
       const newTreasuryArg = tx.pure.address(newTreasuryAddress);
 
       // Call the update_treasury_address function from admin module
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::admin::update_treasury_address`,
+        target: `${getCurrentPackageId()}::admin::update_treasury`,
         arguments: [
           auctionHouseCapArg,
           registryArg,
@@ -163,16 +163,16 @@ export const useAdminHook = () => {
     try {
       const client = new SuiClient({ url: getFullnodeUrl("devnet") });
       
-      console.log("Fetching registry fee info from:", DEVNET_AUCTION_REGISTRY_ID);
+      console.log("Fetching registry fee info from:", getCurrentAuctionRegistry());
       
       // Call the view function to get registry fee info (still in auction_house module)
       const result = await client.devInspectTransactionBlock({
         transactionBlock: (() => {
           const tx = new Transaction();
-          const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
+          const registryArg = tx.object(getCurrentAuctionRegistry());
           
           tx.moveCall({
-            target: `${DEVNET_PACKAGE_ID}::auction_house::get_registry_fee_info`,
+            target: `${getCurrentPackageId()}::auction_house::get_registry_fee_info`,
             arguments: [registryArg],
           });
           
@@ -237,7 +237,7 @@ export const useAdminHook = () => {
 
       // Call the create_admin_cap function from admin module
       tx.moveCall({
-        target: `${DEVNET_PACKAGE_ID}::admin::create_admin_cap`,
+        target: `${getCurrentPackageId()}::admin::create_admin_cap`,
         arguments: [
           auctionHouseCapArg,
           recipientArg,
@@ -271,9 +271,9 @@ export const useAdminHook = () => {
     try {
       setIsLoading(true);
       const registryObjects = await client.getOwnedObjects({
-        owner: DEVNET_PACKAGE_ID,
+        owner: getCurrentPackageId(),
         filter: {
-          StructType: `${DEVNET_PACKAGE_ID}::admin::AdminRegistry`,
+          StructType: `${getCurrentPackageId()}::admin::AdminRegistry`,
         },
         options: {
           showContent: true,
@@ -306,7 +306,7 @@ export const useAdminHook = () => {
       const adminCaps = await client.getOwnedObjects({
         owner: currentAccount.address,
         filter: {
-          StructType: `${DEVNET_PACKAGE_ID}::admin::AuctionHouseCap`,
+          StructType: `${getCurrentPackageId()}::admin::AuctionHouseCap`,
         },
         options: {
           showContent: true,
@@ -346,7 +346,7 @@ export const useAdminHook = () => {
         transactionBlock: (() => {
           const tx = new Transaction();
           tx.moveCall({
-            target: `${DEVNET_PACKAGE_ID}::admin::is_active_admin`,
+            target: `${getCurrentPackageId()}::admin::is_active_admin`,
             arguments: [
               tx.object(adminRegistry.objectId),
               tx.pure.address(address),
@@ -379,7 +379,7 @@ export const useAdminHook = () => {
         transactionBlock: (() => {
           const tx = new Transaction();
           tx.moveCall({
-            target: `${DEVNET_PACKAGE_ID}::admin::get_all_active_admins`,
+            target: `${getCurrentPackageId()}::admin::get_all_active_admins`,
             arguments: [tx.object(adminRegistry.objectId)],
           });
           return tx;
@@ -414,7 +414,7 @@ export const useAdminHook = () => {
         transactionBlock: (() => {
           const tx = new Transaction();
           tx.moveCall({
-            target: `${DEVNET_PACKAGE_ID}::admin::get_admin_registry_stats`,
+            target: `${getCurrentPackageId()}::admin::get_admin_registry_stats`,
             arguments: [tx.object(adminRegistry.objectId)],
           });
           return tx;

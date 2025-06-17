@@ -2,7 +2,7 @@ import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
 import { SuiObjectData } from "@mysten/sui/client";
 import { Transaction } from "@mysten/sui/transactions";
 import { useCallback, useEffect, useState } from "react";
-import { DEVNET_PACKAGE_ID } from "../contants";
+import { DEVNET_PACKAGE_ID, SYSTEM_CLOCK_ID } from "../contants";
 
 export interface AdminCapInfo {
   capObjectId: string;
@@ -229,7 +229,7 @@ export function useAdminManagement() {
         tx.object(userAdminCap.objectId),
         tx.object(adminRegistry.objectId),
         tx.pure.address(recipientAddress),
-        tx.object("0x6"), // Clock object
+        tx.object(SYSTEM_CLOCK_ID), // Clock object
       ],
     });
 
@@ -250,7 +250,7 @@ export function useAdminManagement() {
         tx.object(userAdminCap.objectId),
         tx.object(adminRegistry.objectId),
         tx.pure.address(targetAddress),
-        tx.object("0x6"), // Clock object
+        tx.object(SYSTEM_CLOCK_ID), // Clock object
       ],
     });
 
