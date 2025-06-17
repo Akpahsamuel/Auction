@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAdminHook } from "../../../hooks/use-admin";
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Settings, Coins, RefreshCw, Shield, AlertTriangle, UserPlus, TrendingUp, Database, Users, Lock, CheckCircle2, ArrowDownToLine } from "lucide-react";
+import { Settings, Coins, RefreshCw, Shield, AlertTriangle, UserPlus, TrendingUp, Database, Lock, CheckCircle2, ArrowDownToLine } from "lucide-react";
 
 const AdminPage = () => {
   const [registryFeeInfo, setRegistryFeeInfo] = useState<{
