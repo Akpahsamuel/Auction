@@ -132,6 +132,12 @@ const Index = () => {
     return (mistValue / 1_000_000_000).toFixed(4);
   };
 
+  const formatStartingBid = (suiAmount: string | number) => {
+    // starting_bid is stored in SUI units, so no conversion needed
+    const suiValue = typeof suiAmount === 'string' ? parseFloat(suiAmount) : suiAmount;
+    return suiValue.toFixed(4);
+  };
+
   const isAuctionEnded = () => {
     if (!auctionData?.data?.content?.fields) return false;
     const endTime = parseInt(auctionData.data.content.fields.end_time);
@@ -151,7 +157,15 @@ const Index = () => {
 
   const getCurrentBid = () => {
     if (!auctionData?.data?.content?.fields) return "0";
-    return auctionData.data.content.fields.highest_bid || auctionData.data.content.fields.starting_bid;
+    // current_bid is stored in MIST, starting_bid is stored in SUI units
+    // If there are bids, use current_bid (in MIST), otherwise convert starting_bid to MIST
+    if (auctionData.data.content.fields.bid_count > 0) {
+      return auctionData.data.content.fields.current_bid;
+    } else {
+      // Convert starting_bid from SUI to MIST for consistent display
+      const startingBidSui = auctionData.data.content.fields.starting_bid;
+      return (startingBidSui * 1_000_000_000).toString();
+    }
   };
 
   const getMinimumBid = () => {
@@ -245,7 +259,7 @@ const Index = () => {
                 <div className="space-y-3">
                   <div>
                     <span className="text-sm text-gray-500">Starting Bid:</span>
-                    <p className="text-lg font-medium">{formatSui(auction.starting_bid)} SUI</p>
+                    <p className="text-lg font-medium">{formatStartingBid(auction.starting_bid)} SUI</p>
                   </div>
                   <div>
                     <span className="text-sm text-gray-500">Current Highest Bid:</span>
