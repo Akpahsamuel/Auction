@@ -15,12 +15,16 @@ module auct::admin {
         transfer::transfer(auction_house_cap, tx_context::sender(ctx));
     }
 
-    // Public entry function to create and transfer additional admin capabilities
-    public entry fun create_admin_cap(ctx: &mut TxContext) {
+    // Public entry function to create and transfer additional admin capabilities (requires existing admin cap)
+    public entry fun create_admin_cap(
+        _auction_house_cap: &AuctionHouseCap,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
         let auction_house_cap = AuctionHouseCap {
             id: object::new(ctx),
         };
-        transfer::transfer(auction_house_cap, tx_context::sender(ctx));
+        transfer::transfer(auction_house_cap, recipient);
     }
 
     // Withdraw accumulated fees from registry (only auction house admins with cap)

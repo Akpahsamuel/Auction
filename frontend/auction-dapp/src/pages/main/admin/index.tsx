@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAdminHook } from "../../../hooks/use-admin";
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Settings, Coins, RefreshCw, Shield, AlertTriangle } from "lucide-react";
+import { Settings, Coins, RefreshCw, Shield, AlertTriangle, UserPlus } from "lucide-react";
 
 const AdminPage = () => {
   const [registryFeeInfo, setRegistryFeeInfo] = useState<{
@@ -9,9 +9,11 @@ const AdminPage = () => {
     treasuryAddress: string;
   } | null>(null);
   const [newTreasuryAddress, setNewTreasuryAddress] = useState("");
+  const [newAdminAddress, setNewAdminAddress] = useState("");
   const [loading, setLoading] = useState(true);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [isUpdatingTreasury, setIsUpdatingTreasury] = useState(false);
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
 
@@ -20,6 +22,7 @@ const AdminPage = () => {
     updateTreasuryAddress,
     getRegistryFeeInfo,
     checkIsAdmin,
+    createAdminCap,
   } = useAdminHook();
   
   const currentAccount = useCurrentAccount();
@@ -95,6 +98,29 @@ const AdminPage = () => {
       console.error("Error updating treasury address:", error);
     } finally {
       setIsUpdatingTreasury(false);
+    }
+  };
+
+  const handleCreateAdminCap = async () => {
+    if (!newAdminAddress.trim()) {
+      alert("Please enter a valid recipient address");
+      return;
+    }
+
+    // Basic address validation
+    if (!newAdminAddress.startsWith("0x") || newAdminAddress.length !== 66) {
+      alert("Please enter a valid Sui address (should start with 0x and be 66 characters long)");
+      return;
+    }
+
+    setIsCreatingAdmin(true);
+    try {
+      await createAdminCap(newAdminAddress.trim());
+      setNewAdminAddress("");
+    } catch (error) {
+      console.error("Error creating admin capability:", error);
+    } finally {
+      setIsCreatingAdmin(false);
     }
   };
 
@@ -258,6 +284,54 @@ const AdminPage = () => {
               className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isUpdatingTreasury ? 'Updating...' : 'Update Treasury Address'}
+            </button>
+          </div>
+        </div>
+
+        {/* Admin Management */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <div className="flex items-center space-x-3 mb-4">
+            <UserPlus className="h-6 w-6 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Admin Management</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">Important Security Notice</p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Creating admin capabilities grants full administrative access to the auction house. 
+                    Only grant admin access to trusted addresses.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="newAdminAddress" className="block text-sm font-medium text-gray-700 mb-1">
+                Recipient Address for New Admin Capability
+              </label>
+              <input
+                type="text"
+                id="newAdminAddress"
+                value={newAdminAddress}
+                onChange={(e) => setNewAdminAddress(e.target.value)}
+                placeholder="0x... (66 characters)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                The recipient will receive an AuctionHouseCap NFT granting admin privileges
+              </p>
+            </div>
+            
+            <button
+              onClick={handleCreateAdminCap}
+              disabled={isCreatingAdmin || !newAdminAddress.trim()}
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isCreatingAdmin ? 'Creating Admin Capability...' : 'Create Admin Capability'}
             </button>
           </div>
         </div>

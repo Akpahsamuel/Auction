@@ -212,11 +212,51 @@ export const useAdminHook = () => {
     }
   };
 
+  const createAdminCap = async (recipientAddress: string) => {
+    try {
+      const tx = new Transaction();
+
+      // Prepare move call arguments
+      const auctionHouseCapArg = tx.object(DEVNET_AUCTION_HOUSE_CAP);
+      const recipientArg = tx.pure.address(recipientAddress);
+
+      // Call the create_admin_cap function from admin module (requires admin cap)
+      tx.moveCall({
+        target: `${DEVNET_PACKAGE_ID}::admin::create_admin_cap`,
+        arguments: [
+          auctionHouseCapArg,
+          recipientArg,
+        ],
+      });
+
+      signAndExecuteTransaction(
+        { transaction: tx },
+        {
+          onSuccess: (result) => {
+            console.log("Admin capability created successfully!", result);
+            toast.success(`Admin capability created and sent to ${recipientAddress}!`);
+            console.log("Transaction digest:", result.digest);
+          },
+          onError: (error) => {
+            console.error("Failed to create admin capability:", error);
+            handleAdminError(error);
+          },
+        },
+      );
+    } catch (error: any) {
+      console.error("Error preparing create admin cap transaction:", error);
+      toast.error(
+        `Failed to create admin capability: ${error.message || "Unknown error"}`,
+      );
+    }
+  };
+
   return { 
     checkIsAdmin, 
     withdrawRegistryFees, 
     updateTreasuryAddress, 
-    getRegistryFeeInfo
+    getRegistryFeeInfo,
+    createAdminCap
   };
 };
 
