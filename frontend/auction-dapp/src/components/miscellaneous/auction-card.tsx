@@ -1,8 +1,12 @@
-import { Eye, Gavel } from "lucide-react";
+import { Eye, Gavel, X } from "lucide-react";
 import { FiClock } from "react-icons/fi";
 import moment from "moment";
 import suiIcon from "../../assets/icons/sui-icon.png";
 import { Link } from "react-router-dom";
+import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useBidHook } from "../../hooks/use-bid";
+import { useState } from "react";
+
 export interface AuctionCardType {
   id: string;
   title: string;
@@ -13,6 +17,8 @@ export interface AuctionCardType {
   image: string;
   num_of_bids: number;
   uploader: string;
+  nftType?: string;
+  onCancelSuccess?: () => void;
 }
 
 export function AuctionCard({
@@ -24,14 +30,88 @@ export function AuctionCard({
   image,
   num_of_bids,
   uploader,
+  nftType,
+  onCancelSuccess,
 }: AuctionCardType) {
+  const currentAccount = useCurrentAccount();
+  const { cancelAuction } = useBidHook();
+  const [isCanceling, setIsCanceling] = useState(false);
+
+  const isCurrentUserCreator = () => {
+    return currentAccount?.address === uploader;
+  };
+
+  const canCancelAuction = () => {
+    const isCreator = isCurrentUserCreator();
+    // Convert to number to handle different data types from blockchain
+    const bidCount = Number(num_of_bids) || 0;
+    const noBids = bidCount === 0;
+    const notEnded = new Date() < new Date(end_time);
+    
+    console.log('AuctionCard canCancelAuction debug:', {
+      isCreator,
+      bidCount,
+      bidCountRaw: num_of_bids,
+      bidCountType: typeof num_of_bids,
+      noBids,
+      notEnded,
+      result: isCreator && noBids && notEnded
+    });
+    
+    return isCreator && noBids && notEnded;
+  };
+
+  const handleCancelAuction = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigation
+    e.stopPropagation(); // Stop event bubbling
+
+    if (!nftType) {
+      alert("NFT type not available for cancellation");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Are you sure you want to cancel this auction? This action cannot be undone and your NFT will be returned to you."
+    );
+    
+    if (!confirmed) return;
+
+    setIsCanceling(true);
+    try {
+      await cancelAuction(id, nftType);
+      if (onCancelSuccess) {
+        onCancelSuccess();
+      }
+    } catch (error) {
+      console.error("Failed to cancel auction:", error);
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
   return (
-    <Link to={`/auctions/${id}`}>
-      <div className="w-full bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer hover:-translate-y-2 transition-all duration-500">
+    <div className="w-full bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer hover:-translate-y-2 transition-all duration-500 relative">
+      {/* Cancel button for creators - positioned absolutely */}
+      {canCancelAuction() && (
+        <button
+          onClick={handleCancelAuction}
+          disabled={isCanceling}
+          className="absolute top-3 left-3 z-10 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          title="Cancel Auction (No bids placed)"
+        >
+          {isCanceling ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <X size={16} />
+          )}
+        </button>
+      )}
+
+      <Link to={`/auctions/${id}`}>
         {/* Image with badge */}
         <div className="relative h-fit">
           <img
-            src={image} // 👈 Replace with actual image path
+            src={image}
             alt="NFT Preview"
             className="h-64 w-full object-cover"
           />
@@ -84,8 +164,19 @@ export function AuctionCard({
               <Gavel size={14} /> <span className="text-[14px]">Place Bid</span>
             </button>
           </div>
+
+          {/* Creator status indicator */}
+          {isCurrentUserCreator() && (
+            <div className="text-xs text-center py-1 bg-yellow-100 text-yellow-800 rounded-md">
+              Your Auction {canCancelAuction() && "• Can Cancel"}
+              {/* Debug info */}
+              <div className="mt-1 text-[10px] text-gray-600">
+                Bids: {num_of_bids} | Ended: {new Date() >= new Date(end_time) ? 'Yes' : 'No'} | Can Cancel: {canCancelAuction() ? 'Yes' : 'No'}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }

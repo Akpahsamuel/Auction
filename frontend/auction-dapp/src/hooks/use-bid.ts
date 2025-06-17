@@ -1,7 +1,6 @@
 import { Transaction } from "@mysten/sui/transactions";
 import { DEVNET_PACKAGE_ID, DEVNET_AUCTION_REGISTRY_ID } from "../contants";
 import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { toast } from "react-toastify";
 
 export const useBidHook = () => {
@@ -11,9 +10,6 @@ export const useBidHook = () => {
     try {
       // Create a new transaction for each bid
       const tx = new Transaction();
-
-      // Initialize Sui client for devnet
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
 
       // The contract only supports whole SUI amounts due to its design
       // bid_amount parameter is u64 expecting SUI units, then multiplied by MIST_PER_SUI internally
@@ -160,7 +156,50 @@ export const useBidHook = () => {
     }
   };
 
-  return { placeBid, claimNft, claimCreatorProceeds };
+  const cancelAuction = async (auctionId: string, nftType: string) => {
+    try {
+      // Create a new transaction for canceling auction
+      const tx = new Transaction();
+
+      // Prepare move call arguments
+      const auctionArg = tx.object(auctionId);
+      const registryArg = tx.object(DEVNET_AUCTION_REGISTRY_ID);
+
+      // Call the generic cancel_auction function with proper type argument
+      tx.moveCall({
+        target: `${DEVNET_PACKAGE_ID}::auction_house::cancel_auction`,
+        typeArguments: [nftType], // Pass the NFT type
+        arguments: [
+          auctionArg,
+          registryArg,
+        ],
+      });
+
+      signAndExecuteTransaction(
+        { transaction: tx },
+        {
+          onSuccess: (result) => {
+            console.log("Auction canceled successfully!", result);
+            toast.success("Auction canceled successfully! Your NFT has been returned.");
+
+            // Log transaction details for debugging
+            console.log("Transaction digest:", result.digest);
+          },
+          onError: (error) => {
+            console.error("Failed to cancel auction:", error);
+            handleCancelError(error);
+          },
+        },
+      );
+    } catch (error: any) {
+      console.error("Error preparing cancel auction transaction:", error);
+      toast.error(
+        `Failed to cancel auction: ${error.message || "Unknown error"}`,
+      );
+    }
+  };
+
+  return { placeBid, claimNft, claimCreatorProceeds, cancelAuction };
 };
 
 const handleBidError = (error: any) => {
@@ -188,5 +227,24 @@ const handleBidError = (error: any) => {
     toast.error("Insufficient balance. Please add more SUI to your wallet.");
   } else {
     toast.error(`Transaction failed: ${errorMessage}`);
+  }
+};
+
+const handleCancelError = (error: any) => {
+  console.error("Cancel auction error details:", error);
+
+  const errorMessage = error.message || error.toString();
+
+  if (errorMessage.includes("ENotAuctionCreator")) {
+    toast.error("Only the auction creator can cancel this auction.");
+  } else if (errorMessage.includes("EBidTooLow")) {
+    // Contract reuses this error code for "auction has bids" in cancel function
+    toast.error("Cannot cancel auction: bids have already been placed.");
+  } else if (errorMessage.includes("InsufficientGas")) {
+    toast.error("Insufficient gas. Please add more SUI to your wallet.");
+  } else if (errorMessage.includes("ObjectNotFound")) {
+    toast.error("Auction not found. It may have already been canceled or completed.");
+  } else {
+    toast.error(`Failed to cancel auction: ${errorMessage}`);
   }
 }; 

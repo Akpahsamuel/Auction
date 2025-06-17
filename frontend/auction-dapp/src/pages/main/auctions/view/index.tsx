@@ -11,6 +11,7 @@ const Index = () => {
   const [bidAmount, setBidAmount] = useState("");
   const [isPlacingBid, setIsPlacingBid] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -19,7 +20,7 @@ const Index = () => {
   });
   
   const { getAuctionDetailById } = useAuctionHook();
-  const { placeBid, claimNft, claimCreatorProceeds } = useBidHook();
+  const { placeBid, claimNft, claimCreatorProceeds, cancelAuction } = useBidHook();
   const currentAccount = useCurrentAccount();
 
   useEffect(() => {
@@ -118,6 +119,33 @@ const Index = () => {
     }
   };
 
+  const handleCancelAuction = async () => {
+    if (!auctionData || !id) return;
+
+    // Confirm cancellation
+    const confirmed = window.confirm(
+      "Are you sure you want to cancel this auction? This action cannot be undone and your NFT will be returned to you."
+    );
+    
+    if (!confirmed) return;
+
+    setIsCanceling(true);
+    try {
+      const nftType = extractNftType(auctionData);
+      await cancelAuction(id, nftType);
+      // Note: After successful cancellation, the auction object is destroyed,
+      // so we might want to redirect the user or show a success message
+      // For now, we'll try to refresh but expect it to fail gracefully
+      setTimeout(() => {
+        window.location.href = '/auctions'; // Redirect to auctions list
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to cancel auction:", error);
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
   const extractNftType = (auction: any) => {
     if (auction?.data?.type) {
       const typeString = auction.data.type;
@@ -172,6 +200,29 @@ const Index = () => {
     const currentBid = parseFloat(formatSui(getCurrentBid()));
     // Since contract only supports whole SUI amounts, minimum bid is next whole SUI
     return Math.ceil(currentBid + 0.001).toString();
+  };
+
+  const canCancelAuction = () => {
+    if (!currentAccount?.address || !auctionData?.data?.content?.fields) return false;
+    const auction = auctionData.data.content.fields;
+    const userIsCreator = currentAccount.address === auction.creator;
+    // Convert bid_count to number to handle different data types from blockchain
+    const bidCount = Number(auction.bid_count) || 0;
+    const noBids = bidCount === 0;
+    const notEnded = !isAuctionEnded();
+    
+    // Debug logging
+    console.log('canCancelAuction debug:', {
+      userIsCreator,
+      bidCount,
+      bidCountRaw: auction.bid_count,
+      bidCountType: typeof auction.bid_count,
+      noBids,
+      notEnded,
+      result: userIsCreator && noBids && notEnded
+    });
+    
+    return userIsCreator && noBids && notEnded;
   };
 
   if (loading) {
@@ -346,7 +397,45 @@ const Index = () => {
                 {userIsCreator && !auctionEnded && (
                   <div className="bg-yellow-50 p-4 rounded-lg">
                     <h3 className="text-lg font-semibold text-yellow-900 mb-2">Your Auction</h3>
-                    <p className="text-yellow-700">You cannot bid on your own auction.</p>
+                    <p className="text-yellow-700 mb-4">You cannot bid on your own auction.</p>
+                    
+                    {/* Debug Information */}
+                    <div className="mb-4 p-3 bg-gray-100 rounded-md text-xs">
+                      <h4 className="font-semibold mb-2">Debug Info:</h4>
+                      <p>Current User: {currentAccount?.address || 'Not connected'}</p>
+                      <p>Auction Creator: {auction.creator}</p>
+                      <p>User is Creator: {userIsCreator ? 'Yes' : 'No'}</p>
+                      <p>Bid Count (raw): {JSON.stringify(auction.bid_count)} (type: {typeof auction.bid_count})</p>
+                      <p>Bid Count (number): {Number(auction.bid_count) || 0}</p>
+                      <p>No Bids: {(Number(auction.bid_count) || 0) === 0 ? 'Yes' : 'No'}</p>
+                      <p>Auction Ended: {auctionEnded ? 'Yes' : 'No'}</p>
+                      <p>Can Cancel: {canCancelAuction() ? 'Yes' : 'No'}</p>
+                    </div>
+                    
+                    {/* Cancel Auction Button - Only show if no bids */}
+                    {canCancelAuction() && (
+                      <div className="mt-4 pt-4 border-t border-yellow-200">
+                        <h4 className="text-sm font-medium text-yellow-900 mb-2">Cancel Auction</h4>
+                        <p className="text-sm text-yellow-700 mb-3">
+                          Since no bids have been placed, you can cancel this auction and get your NFT back.
+                        </p>
+                        <button
+                          onClick={handleCancelAuction}
+                          disabled={isCanceling}
+                          className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isCanceling ? 'Canceling...' : 'Cancel Auction'}
+                        </button>
+                      </div>
+                    )}
+                    
+                    {auction.bid_count > 0 && (
+                      <div className="mt-4 pt-4 border-t border-yellow-200">
+                        <p className="text-sm text-yellow-700">
+                          <strong>Note:</strong> This auction cannot be canceled because bids have been placed.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
