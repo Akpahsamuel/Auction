@@ -124,9 +124,9 @@ const AdminPage = () => {
     }
   };
 
-  const formatSui = (mist: number) => {
-    const suiValue = mist / 1_000_000_000;
-    console.log(`Converting ${mist} MIST to ${suiValue} SUI`); // Debug log
+  const formatSui = (suiValue: number) => {
+    // The value is already in SUI units from getRegistryFeeInfo, no conversion needed
+    console.log(`Displaying ${suiValue} SUI`); // Debug log
     return suiValue.toFixed(4);
   };
 
@@ -288,7 +288,7 @@ const AdminPage = () => {
                       </p>
                       {registryFeeInfo && (
                         <p className="text-xs text-green-200 font-mono">
-                          {registryFeeInfo.feeBalance} MIST
+                          {(registryFeeInfo.feeBalance * 1_000_000_000).toFixed(0)} MIST
                         </p>
                       )}
                     </div>
