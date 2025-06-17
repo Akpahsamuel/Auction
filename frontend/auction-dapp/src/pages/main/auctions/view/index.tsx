@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAuctionHook } from "../../../../hooks/use-create-auction";
 import { useBidHook } from "../../../../hooks/use-bid";
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Clock, Trophy, Gavel, AlertCircle, CheckCircle2, Coins, User, Calendar, Hash, X, RefreshCw, ExternalLink } from "lucide-react";
+import { Clock, Trophy, Gavel, AlertCircle, Coins, User, Calendar, Hash, X, RefreshCw, ExternalLink } from "lucide-react";
 import { toast } from "react-toastify";
 import { formatMistAsSui } from "../../../../utils/currency";
 
@@ -151,8 +151,6 @@ const Index = () => {
         throw new Error("Could not determine NFT type for claiming");
       }
       
-      const auction = auctionData.data.content.fields;
-      
       // Check if creator has already claimed proceeds using the helper function
       const creatorHasClaimedProceeds = isCreatorAlreadyClaimed();
       
@@ -263,16 +261,22 @@ const Index = () => {
 
   // Helper function to extract NFT image URL from auction data
   const getNftImageUrl = () => {
+    if (!auctionData?.data?.content?.fields) return "";
+    const auction = auctionData.data.content.fields;
     return auction.nft?.fields?.nft?.fields?.image_url || "";
   };
 
   // Helper function to extract NFT name from auction data
   const getNftName = () => {
+    if (!auctionData?.data?.content?.fields) return "Digital Collectible";
+    const auction = auctionData.data.content.fields;
     return auction.nft?.fields?.nft?.fields?.name || "Digital Collectible";
   };
 
   // Helper function to extract NFT description from auction data
   const getNftDescription = () => {
+    if (!auctionData?.data?.content?.fields) return "";
+    const auction = auctionData.data.content.fields;
     return auction.nft?.fields?.nft?.fields?.description || "";
   };
 
@@ -390,7 +394,7 @@ const Index = () => {
     console.log("=== AUCTION DEBUG INFO ===");
     console.log("Auction ID:", id);
     console.log("Full auction data:", auctionData);
-    console.log("Auction fields:", auction);
+    console.log("Auction fields:", auctionData.data.content.fields);
     console.log("User address:", currentAccount?.address);
     console.log("User is creator:", isCurrentUserCreator());
     console.log("User is winner:", isCurrentUserWinner());
