@@ -16,7 +16,7 @@ export const MAINNET_ADMIN_REGISTRY = "0x234";
 
 // Super admin capability IDs
 export const TESTNET_AUCTION_HISTORY = "";
-export const DEVNET_AUCTION_HISTORY = "0x1b7837c8d8d7f96d02605c05fb72cfc44015133c89f467abf2b300031b60f9ac";
+export const DEVNET_AUCTION_HISTORY = "";
 export const MAINNET_AUCTION_HISTORY = "0x234";
 
 // Auction Registry IDs - These are the main registry objects for the auction system
