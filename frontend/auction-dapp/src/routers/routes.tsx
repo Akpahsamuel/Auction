@@ -7,6 +7,8 @@ const ViewAuctions = lazy(() => import("../pages/main/auctions"));
 const ViewSingleAuction = lazy(() => import("../pages/main/auctions/view"));
 const CreateAuction = lazy(() => import("../pages/main/createnft"));
 const AdminPage = lazy(() => import("../pages/main/admin"));
+const AuctionHistoryPage = lazy(() => import("../pages/main/auction-history"));
+const AuctionHistoryDetailPage = lazy(() => import("../pages/main/auction-history/[id]"));
 const NotFound = lazy(() => import("../components/not-found"));
 
 // declaration of all routes >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -27,7 +29,16 @@ export const routes: RouteProps[] = [
     label: "View a single auction",
     component: <ViewSingleAuction />,
   },
-
+  {
+    path: "/auction-history",
+    label: "Auction History",
+    component: <AuctionHistoryPage />,
+  },
+  {
+    path: "/auction-history/:id",
+    label: "Auction History Details",
+    component: <AuctionHistoryDetailPage />,
+  },
   {
     path: "/create",
     label: "Creae NFT",

@@ -1,5 +1,5 @@
 import { Transaction } from "@mysten/sui/transactions";
-import { getCurrentAuctionRegistry, getCurrentPackageId } from "../contants";
+import { getCurrentAuctionRegistry, getCurrentPackageId, getCurrentAdminRegistry } from "../contants";
 import { useSignAndExecuteTransaction, useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
 import { SuiClient, getFullnodeUrl, SuiObjectData } from "@mysten/sui/client";
 import { toast } from "react-toastify";
@@ -77,14 +77,16 @@ export const useAdminHook = () => {
 
       // Prepare move call arguments using the user's admin capability
       const auctionHouseCapArg = tx.object(adminCapId);
-      const registryArg = tx.object(getCurrentAuctionRegistry());
+      const adminRegistryArg = tx.object(getCurrentAdminRegistry());
+      const auctionRegistryArg = tx.object(getCurrentAuctionRegistry());
 
       // Call the withdraw_registry_fees function from admin module
       tx.moveCall({
-        target: `${getCurrentPackageId()}::admin::withdraw_fees`,
+        target: `${getCurrentPackageId()}::admin::withdraw_registry_fees`,
         arguments: [
           auctionHouseCapArg,
-          registryArg,
+          adminRegistryArg,
+          auctionRegistryArg,
         ],
       });
 
@@ -123,15 +125,17 @@ export const useAdminHook = () => {
 
       // Prepare move call arguments using the user's admin capability
       const auctionHouseCapArg = tx.object(adminCapId);
-      const registryArg = tx.object(getCurrentAuctionRegistry());
+      const adminRegistryArg = tx.object(getCurrentAdminRegistry());
+      const auctionRegistryArg = tx.object(getCurrentAuctionRegistry());
       const newTreasuryArg = tx.pure.address(newTreasuryAddress);
 
       // Call the update_treasury_address function from admin module
       tx.moveCall({
-        target: `${getCurrentPackageId()}::admin::update_treasury`,
+        target: `${getCurrentPackageId()}::admin::update_treasury_address`,
         arguments: [
           auctionHouseCapArg,
-          registryArg,
+          adminRegistryArg,
+          auctionRegistryArg,
           newTreasuryArg,
         ],
       });

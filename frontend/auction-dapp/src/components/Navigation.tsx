@@ -31,6 +31,10 @@ export function Navigation() {
                   route: "/auctions",
                 },
                 {
+                  title: "History",
+                  route: "/auction-history",
+                },
+                {
                   title: "Create",
                   route: "/create",
                 },
@@ -99,6 +103,10 @@ export function Navigation() {
                 {
                   title: "Auctions",
                   route: "/auctions",
+                },
+                {
+                  title: "History",
+                  route: "/auction-history",
                 },
                 {
                   title: "Create",

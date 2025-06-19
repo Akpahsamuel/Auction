@@ -127,50 +127,78 @@ const Index = () => {
   };
 
   const handleClaimNft = async () => {
-    if (!auctionData || !id) {
-      toast.error("Missing auction data for claiming NFT");
+    console.log("🚀 === STARTING NFT CLAIM PROCESS ===");
+    
+    // Step 1: Comprehensive validation
+    const validation = validateClaimConditions();
+    
+    if (!validation.canClaim) {
+      console.log("❌ Claim validation failed:", validation.reason);
+      toast.error(`Cannot claim NFT: ${validation.reason}`);
       return;
     }
 
-    // Validate that auction has ended
-    if (!isAuctionEnded()) {
-      toast.error("Cannot claim NFT: auction has not ended yet");
-      return;
-    }
-
-    // Validate that user is the winner
-    if (!isCurrentUserWinner()) {
-      toast.error("Cannot claim NFT: you are not the highest bidder");
-      return;
-    }
+    console.log("✅ Claim validation passed:", validation.reason);
+    console.log("🎯 Will use method:", validation.method);
 
     setIsClaiming(true);
+    
     try {
+      // Step 2: Extract NFT type
       const nftType = extractNftType(auctionData);
       if (!nftType) {
         throw new Error("Could not determine NFT type for claiming");
       }
       
-      // Check if creator has already claimed proceeds using the helper function
-      const creatorHasClaimedProceeds = isCreatorAlreadyClaimed();
+      console.log("🏷️ NFT Type extracted:", nftType);
       
-      if (creatorHasClaimedProceeds) {
-        await claimNftAfterCreatorClaim(id, nftType);
+      // Step 3: Execute the appropriate claim function
+      console.log(`🔄 Executing ${validation.method}...`);
+      
+      let result;
+      if (validation.method === "claimNftAfterCreatorClaim") {
+        result = await claimNftAfterCreatorClaim(id!, nftType);
       } else {
-        await claimNft(id, nftType);
+        result = await claimNft(id!, nftType);
       }
       
-      // Reload page after successful claim
-      toast.success("NFT claimed successfully!");
+      // Step 4: Success handling
+      console.log("🎉 NFT claim transaction completed successfully!", result);
+      console.log("🔗 Transaction result:", result);
       
+      // Toast already shown in the hook, so don't duplicate
+      // Wait a bit then reload page to see updated state
       setTimeout(() => {
+        console.log("🔄 Reloading page to reflect changes...");
         window.location.reload();
-      }, 1500);
+      }, 2000);
+      
     } catch (error) {
-      console.error("Failed to claim NFT:", error);
-      toast.error(`Failed to claim NFT: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("💥 Failed to claim NFT:", error);
+      
+      // Enhanced error logging
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+      
+      // Check for specific error patterns - only show toast if not already shown by hook
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes("User rejected") || errorMessage.includes("rejected")) {
+        console.log("🚫 User rejected the transaction");
+        // Don't show error toast for user rejections
+      } else if (errorMessage.includes("EAuctionStillActive") || errorMessage.includes("4")) {
+        console.error("🚨 EAuctionStillActive error detected - wrong claim method used");
+        // Error already handled in hook
+      } else if (!errorMessage.includes("Failed to claim NFT")) {
+        // Only show error if it wasn't already handled by the hook
+        toast.error(`Unexpected error: ${errorMessage}`);
+      }
+      
     } finally {
       setIsClaiming(false);
+      console.log("🏁 === NFT CLAIM PROCESS COMPLETED ===");
     }
   };
 
@@ -284,6 +312,7 @@ const Index = () => {
     return formatMistAsSui(mist, 4);
   };
 
+  // Enhanced auction ended check
   const isAuctionEnded = () => {
     if (!auctionData?.data?.content?.fields) return false;
     const fields = auctionData.data.content.fields;
@@ -355,28 +384,95 @@ const Index = () => {
     // Move enums in Sui are represented with type and variant fields
     const status = auction.status;
     
+    console.log("Checking auction status:", status, "Type:", typeof status);
+    
     // Handle multiple possible representations of the Claimed enum
-    if (typeof status === 'string') {
-      return status === "Claimed";
+    // In Move: Active = 0, Ended = 1, Claimed = 2
+    
+    if (typeof status === 'number') {
+      // Direct numeric representation
+      return status === 2; // Claimed = 2
+    } else if (typeof status === 'string') {
+      return status === "Claimed" || status === "2";
     } else if (typeof status === 'object' && status !== null) {
       // Check for Sui enum format: { "type": "...", "variant": "Claimed", "fields": {} }
       if (status.variant === "Claimed") {
         return true;
       }
       // Check for alternative object representation like { "Claimed": null } or { "Claimed": {} }
-      return status.hasOwnProperty('Claimed') || status.Claimed !== undefined;
+      if (status.hasOwnProperty('Claimed') || status.Claimed !== undefined) {
+        return true;
+      }
+      // Check for numeric enum representation in object form
+      if (status.type === 2 || status.value === 2) {
+        return true;
+      }
+      // Handle BCS serialized format
+      if (status.$kind === "Claimed" || status.kind === "Claimed") {
+        return true;
+      }
     }
     
     return false;
+  };
+
+  // NEW: More robust auction status detection
+  const getAuctionStatus = () => {
+    if (!auctionData?.data?.content?.fields) return "Unknown";
+    const status = auctionData.data.content.fields.status;
+    
+    console.log("Raw auction status object:", status);
+    
+    // Handle numeric enum (most common in Sui)
+    if (typeof status === 'number') {
+      if (status === 0) return "Active";
+      if (status === 1) return "Ended"; 
+      if (status === 2) return "Claimed";
+      return `Unknown(${status})`;
+    }
+    
+    // Handle string representation
+    if (typeof status === 'string') {
+      return status;
+    }
+    
+    // Handle object representations (various formats)
+    if (typeof status === 'object' && status !== null) {
+      // Sui Move enum format with variant field
+      if (status.variant) {
+        return status.variant;
+      }
+      
+      // Object with direct enum key
+      if (status.hasOwnProperty('Active')) return "Active";
+      if (status.hasOwnProperty('Ended')) return "Ended";
+      if (status.hasOwnProperty('Claimed')) return "Claimed";
+      
+      // BCS serialized format
+      if (status.$kind) return status.$kind;
+      if (status.kind) return status.kind;
+      
+      // Fallback: JSON representation for debugging
+      console.log("Unrecognized status object format:", JSON.stringify(status));
+      return `Object(${JSON.stringify(status)})`;
+    }
+    
+    return "Unknown";
+  };
+
+  // NEW: Check if auction is in Claimed status (creator has claimed proceeds)
+  const isAuctionInClaimedStatus = () => {
+    const status = getAuctionStatus();
+    return status === "Claimed";
   };
 
   // Helper function to get claim button text and explanation
   const getClaimInfo = () => {
     if (!auctionData?.data?.content?.fields) return { text: "Claim NFT", explanation: "" };
     
-    const creatorClaimed = isCreatorAlreadyClaimed();
+    const isInClaimedStatus = isAuctionInClaimedStatus();
     
-    if (creatorClaimed) {
+    if (isInClaimedStatus) {
       return {
         text: "Claim NFT",
         explanation: "Creator has already claimed proceeds. You can now claim your NFT."
@@ -394,13 +490,23 @@ const Index = () => {
     console.log("=== AUCTION DEBUG INFO ===");
     console.log("Auction ID:", id);
     console.log("Full auction data:", auctionData);
-    console.log("Auction fields:", auctionData.data.content.fields);
+    console.log("Auction fields:", auctionData?.data?.content?.fields);
+    console.log("Auction status (raw):", auctionData?.data?.content?.fields?.status);
+    console.log("Auction status (parsed):", getAuctionStatus());
+    console.log("Is in Claimed status:", isAuctionInClaimedStatus());
+    console.log("Creator claimed check (legacy):", isCreatorAlreadyClaimed());
     console.log("User address:", currentAccount?.address);
     console.log("User is creator:", isCurrentUserCreator());
     console.log("User is winner:", isCurrentUserWinner());
     console.log("Auction ended:", isAuctionEnded());
     console.log("Can cancel:", canCancelAuction());
     console.log("NFT Type:", extractNftType(auctionData));
+    console.log("Current time:", Date.now());
+    console.log("Auction end time:", auctionData?.data?.content?.fields?.end_time);
+    console.log("Bid count:", auctionData?.data?.content?.fields?.bid_count);
+    console.log("Current bid:", auctionData?.data?.content?.fields?.current_bid);
+    console.log("Highest bidder:", auctionData?.data?.content?.fields?.highest_bidder);
+    console.log("Claim function to use:", isAuctionInClaimedStatus() ? "claimNftAfterCreatorClaim" : "claimNft");
     console.log("========================");
   };
 
@@ -408,6 +514,147 @@ const Index = () => {
     // Open SuiScan (Sui blockchain explorer) for the auction object
     const explorerUrl = `https://suiscan.xyz/devnet/object/${id}`;
     window.open(explorerUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  // NEW: Comprehensive diagnostic function to understand auction status format
+  const handleAuctionStatusDiagnostic = () => {
+    if (!auctionData?.data?.content?.fields) {
+      console.log("❌ No auction data available");
+      return;
+    }
+
+    const auction = auctionData.data.content.fields;
+    const status = auction.status;
+
+    console.log("🔍 === COMPREHENSIVE AUCTION STATUS DIAGNOSTIC ===");
+    console.log("📊 Raw status value:", status);
+    console.log("📊 Status type:", typeof status);
+    console.log("📊 Status constructor:", status?.constructor?.name);
+    console.log("📊 Status as JSON:", JSON.stringify(status, null, 2));
+    
+    if (typeof status === 'object' && status !== null) {
+      console.log("📊 Object keys:", Object.keys(status));
+      console.log("📊 Object entries:", Object.entries(status));
+      
+      // Check all possible enum representations
+      console.log("🔎 Checking enum representations:");
+      console.log("  - status.variant:", status.variant);
+      console.log("  - status.$kind:", status.$kind);
+      console.log("  - status.kind:", status.kind);
+      console.log("  - status.type:", status.type);
+      console.log("  - status.value:", status.value);
+      console.log("  - status.Active:", status.Active);
+      console.log("  - status.Ended:", status.Ended);
+      console.log("  - status.Claimed:", status.Claimed);
+      
+      // Check for numeric properties
+      for (const [key, value] of Object.entries(status)) {
+        console.log(`  - status['${key}']:`, value, `(type: ${typeof value})`);
+      }
+    }
+    
+    console.log("✅ Parsed status:", getAuctionStatus());
+    console.log("✅ Is in Claimed status:", isAuctionInClaimedStatus());
+    console.log("✅ Legacy creator claimed check:", isCreatorAlreadyClaimed());
+    console.log("✅ Which function would be used:", isAuctionInClaimedStatus() ? "claimNftAfterCreatorClaim" : "claimNft");
+    console.log("=================================");
+    
+    // Also show in UI for easier access
+    toast.info(`Status: ${getAuctionStatus()} | Type: ${typeof status} | Function: ${isAuctionInClaimedStatus() ? "claimNftAfterCreatorClaim" : "claimNft"}`);
+  };
+
+  // NEW: Comprehensive claim validation
+  const validateClaimConditions = () => {
+    console.log("🔍 === COMPREHENSIVE CLAIM VALIDATION ===");
+    
+    if (!auctionData || !id) {
+      console.log("❌ Missing auction data or ID");
+      return { canClaim: false, reason: "Missing auction data" };
+    }
+
+    if (!currentAccount?.address) {
+      console.log("❌ No wallet connected");
+      return { canClaim: false, reason: "No wallet connected" };
+    }
+
+    const auction = auctionData.data.content.fields;
+    const currentTime = Date.now();
+    const endTime = parseInt(auction.end_time);
+    const bidCount = Number(auction.bid_count) || 0;
+    const userAddress = currentAccount.address;
+    const auctionStatus = getAuctionStatus();
+
+    console.log("📊 Validation data:", {
+      auctionId: id,
+      userAddress,
+      creator: auction.creator,
+      highestBidder: auction.highest_bidder,
+      currentTime,
+      endTime,
+      timeDifference: currentTime - endTime,
+      bidCount,
+      auctionStatus,
+      isTimeEnded: currentTime >= endTime,
+      isUserWinner: userAddress === auction.highest_bidder,
+      isUserCreator: userAddress === auction.creator
+    });
+
+    // Check if auction has ended
+    if (currentTime < endTime) {
+      console.log("❌ Auction has not ended yet");
+      return { canClaim: false, reason: "Auction has not ended yet" };
+    }
+
+    // Check if there are bids
+    if (bidCount === 0) {
+      console.log("ℹ️ No bids placed on this auction");
+      if (userAddress === auction.creator) {
+        return { canClaim: true, reason: "Creator can claim back NFT (no bids)", method: "claimNft" };
+      } else {
+        return { canClaim: false, reason: "No bids and you are not the creator" };
+      }
+    }
+
+    // Check if user is the winner
+    if (userAddress !== auction.highest_bidder) {
+      console.log("❌ User is not the highest bidder");
+      return { canClaim: false, reason: "You are not the highest bidder" };
+    }
+
+    // Determine which claim method to use based on auction status
+    if (auctionStatus === "Claimed") {
+      console.log("✅ Can claim using claimNftAfterCreatorClaim");
+      return { canClaim: true, reason: "Creator has claimed proceeds", method: "claimNftAfterCreatorClaim" };
+    } else {
+      console.log("✅ Can claim using claimNft");
+      return { canClaim: true, reason: "Standard claim (pay creator)", method: "claimNft" };
+    }
+  };
+
+  // NEW: Test claim conditions (for debugging)
+  const handleTestClaimConditions = () => {
+    console.log("🧪 === TESTING CLAIM CONDITIONS ===");
+    
+    const validation = validateClaimConditions();
+    
+    console.log("Test results:", validation);
+    
+    // Show results in toast for easy viewing
+    if (validation.canClaim) {
+      toast.success(`✅ Can claim! Method: ${validation.method}. Reason: ${validation.reason}`);
+    } else {
+      toast.error(`❌ Cannot claim. Reason: ${validation.reason}`);
+    }
+    
+    // Also test individual conditions
+    console.log("🔍 Individual condition tests:");
+    console.log("- Auction ended:", isAuctionEnded());
+    console.log("- User is winner:", isCurrentUserWinner());
+    console.log("- User is creator:", isCurrentUserCreator());
+    console.log("- Auction status:", getAuctionStatus());
+    console.log("- In claimed status:", isAuctionInClaimedStatus());
+    
+    return validation;
   };
 
   if (loading) {
@@ -478,6 +725,18 @@ const Index = () => {
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
               >
                 Debug Info
+              </button>
+              <button
+                onClick={handleAuctionStatusDiagnostic}
+                className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
+              >
+                Status Diagnostic
+              </button>
+              <button
+                onClick={handleTestClaimConditions}
+                className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm"
+              >
+                Test Claim
               </button>
             </div>
           </div>
@@ -791,7 +1050,7 @@ const Index = () => {
                 {/* Creator Actions */}
                 {userIsCreator && (
                   <div className="space-y-4">
-                    {auctionEnded && auction.bid_count > 0 && !isCreatorAlreadyClaimed() && (
+                    {auctionEnded && auction.bid_count > 0 && !isAuctionInClaimedStatus() && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                         <div className="flex items-center mb-3">
                           <Coins className="h-5 w-5 text-green-600 mr-2" />
@@ -810,7 +1069,7 @@ const Index = () => {
                       </div>
                     )}
                     
-                    {isCreatorAlreadyClaimed() && (
+                    {isAuctionInClaimedStatus() && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <div className="flex items-center">
                           <Trophy className="h-5 w-5 text-blue-600 mr-2" />
@@ -839,10 +1098,16 @@ const Index = () => {
                             <span>Winning Bid:</span>
                             <span className="font-medium">{formatSui(getCurrentBid())} SUI</span>
                           </div>
-                          <div className="flex justify-between">
+                          <div className="flex justify-between mb-1">
                             <span>Status:</span>
-                            <span className={`font-medium ${isCreatorAlreadyClaimed() ? 'text-green-600' : 'text-orange-600'}`}>
-                              {isCreatorAlreadyClaimed() ? 'Creator Paid' : 'Pending Payment'}
+                            <span className={`font-medium ${isAuctionInClaimedStatus() ? 'text-green-600' : 'text-orange-600'}`}>
+                              {isAuctionInClaimedStatus() ? 'Creator Paid' : 'Pending Payment'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Auction Status:</span>
+                            <span className="font-medium text-blue-600">
+                              {getAuctionStatus()}
                             </span>
                           </div>
                         </div>
