@@ -53,13 +53,30 @@ const AuctionHistoryDetailPage = () => {
   const getAuctionDuration = () => {
     if (!historyData) return "";
     const duration = historyData.endTime - historyData.startTime;
-    const hours = Math.floor(duration / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
+    
+    const days = Math.floor(duration / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((duration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((duration % (1000 * 60)) / 1000);
+    
+    // Build duration string based on available time units
+    const parts = [];
     
     if (days > 0) {
-      return `${days} day${days > 1 ? 's' : ''} ${hours % 24} hour${(hours % 24) !== 1 ? 's' : ''}`;
+      parts.push(`${days} day${days > 1 ? 's' : ''}`);
     }
-    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    if (hours > 0) {
+      parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+    }
+    if (minutes > 0) {
+      parts.push(`${minutes} minute${minutes > 1 ? 's' : ''}`);
+    }
+    // Only show seconds if duration is very short (less than 1 minute)
+    if (parts.length === 0 && seconds > 0) {
+      parts.push(`${seconds} second${seconds > 1 ? 's' : ''}`);
+    }
+    
+    return parts.length > 0 ? parts.join(' ') : "Less than 1 second";
   };
 
   if (loading) {
