@@ -312,24 +312,6 @@ const Index = () => {
     return formatMistAsSui(mist, 4);
   };
 
-  // NEW: More robust auction end detection
-  const isAuctionTimeEnded = () => {
-    if (!auctionData?.data?.content?.fields) return false;
-    const fields = auctionData.data.content.fields;
-    const endTime = parseInt(fields.end_time);
-    const currentTime = Date.now();
-    const timeEnded = currentTime >= endTime;
-    
-    console.log("🕐 Time check:", {
-      currentTime,
-      endTime,
-      timeDifference: currentTime - endTime,
-      isEnded: timeEnded
-    });
-    
-    return timeEnded;
-  };
-
   // Enhanced auction ended check
   const isAuctionEnded = () => {
     if (!auctionData?.data?.content?.fields) return false;
@@ -482,12 +464,6 @@ const Index = () => {
   const isAuctionInClaimedStatus = () => {
     const status = getAuctionStatus();
     return status === "Claimed";
-  };
-
-  // Helper function to get auction status as string for debugging
-  const getAuctionStatusString = () => {
-    // Redirect to the new robust function
-    return getAuctionStatus();
   };
 
   // Helper function to get claim button text and explanation
