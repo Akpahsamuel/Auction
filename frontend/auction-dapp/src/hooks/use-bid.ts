@@ -7,58 +7,100 @@ export const useBidHook = () => {
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
 
   const placeBid = async (auctionId: string, bidAmount: number, nftType: string) => {
-    try {
-      // Create a new transaction for each bid
-      const tx = new Transaction();
+    console.log("🎯 === EXECUTING placeBid ===");
+    console.log("Auction ID:", auctionId);
+    console.log("Bid Amount:", bidAmount, "SUI");
+    console.log("NFT Type:", nftType);
+    console.log("Package ID:", getCurrentPackageId());
+    console.log("Clock ID:", SYSTEM_CLOCK_ID);
+    
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a new transaction for each bid
+        const tx = new Transaction();
 
-      // Convert SUI to MIST (1 SUI = 1,000,000,000 MIST)
-      // This allows decimal bids like 1.5 SUI = 1,500,000,000 MIST
-      const bidAmountMist = Math.floor(bidAmount * 1_000_000_000);
-      
-      console.log(`Bidding ${bidAmount} SUI (${bidAmountMist} MIST)`);
+        // Set gas budget for the transaction
+        tx.setGasBudget(10000000); // 0.01 SUI in MIST
 
-      // Prepare move call arguments
-      const auctionArg = tx.object(auctionId);
-      const bidAmountMistArg = tx.pure.u64(bidAmountMist); // Pass MIST directly to contract
-      const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
+        // Convert SUI to MIST (1 SUI = 1,000,000,000 MIST)
+        // This allows decimal bids like 1.5 SUI = 1,500,000,000 MIST
+        const bidAmountMist = Math.floor(bidAmount * 1_000_000_000);
+        
+        console.log(`Bidding ${bidAmount} SUI (${bidAmountMist} MIST)`);
 
-      // Split coins for the bid amount (payment in MIST)
-      const [bidCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(bidAmountMist)]);
+        // Validate required parameters
+        if (!auctionId || !nftType || bidAmountMist <= 0) {
+          throw new Error("Missing required parameters: auctionId, nftType, or invalid bid amount");
+        }
 
-      // Call the generic place_bid function with proper type argument
-      tx.moveCall({
-        target: `${getCurrentPackageId()}::auction_house::place_bid`,
-        typeArguments: [nftType], // Pass the NFT type
-        arguments: [
-          auctionArg,
-          bidAmountMistArg, // bid_amount_mist in MIST units (u64)
-          bidCoin,          // bid_payment in MIST
-          clockArg,
-        ],
-      });
+        // Prepare move call arguments
+        const auctionArg = tx.object(auctionId);
+        const bidAmountMistArg = tx.pure.u64(bidAmountMist); // Pass MIST directly to contract
+        const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
 
-      signAndExecuteTransaction(
-        { transaction: tx },
-        {
-          onSuccess: (result) => {
-            console.log("Bid placed successfully!", result);
-            toast.success(`Bid of ${bidAmount} SUI placed successfully!`);
+        // Split coins for the bid amount (payment in MIST)
+        const [bidCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(bidAmountMist)]);
 
-            // Log transaction details for debugging
-            console.log("Transaction digest:", result.digest);
+        // Call the generic place_bid function with proper type argument
+        tx.moveCall({
+          target: `${getCurrentPackageId()}::auction_house::place_bid`,
+          typeArguments: [nftType], // Pass the NFT type
+          arguments: [
+            auctionArg,
+            bidAmountMistArg, // bid_amount_mist in MIST units (u64)
+            bidCoin,          // bid_payment in MIST
+            clockArg,
+          ],
+        });
+
+        console.log("📝 Transaction prepared successfully");
+        console.log("📝 Transaction details:", {
+          target: `${getCurrentPackageId()}::auction_house::place_bid`,
+          typeArguments: [nftType],
+          bidAmountSUI: bidAmount,
+          bidAmountMist: bidAmountMist,
+        });
+
+        console.log("🚀 Calling signAndExecuteTransaction...");
+        console.log("🔄 Wallet popup should appear now - waiting for user to sign...");
+
+        // Execute transaction with proper error handling
+        signAndExecuteTransaction(
+          { transaction: tx },
+          {
+            onSuccess: (result) => {
+              console.log("✅ placeBid SUCCESS:", result);
+              console.log("📋 Transaction digest:", result.digest);
+              console.log("📋 Transaction effects:", result.effects);
+              
+              toast.success(`Bid of ${bidAmount} SUI placed successfully!`);
+              resolve(result);
+            },
+            onError: (error) => {
+              console.error("❌ placeBid FAILED:", error);
+              console.error("❌ Error type:", typeof error);
+              console.error("❌ Error details:", JSON.stringify(error, null, 2));
+              
+              // Check if this is a user rejection
+              const errorMessage = error?.message || error?.toString() || '';
+              if (errorMessage.includes('rejected') || errorMessage.includes('cancelled') || errorMessage.includes('User rejected')) {
+                console.log("🚫 User rejected the transaction in wallet");
+                toast.info("Transaction was cancelled by user");
+              } else {
+                console.log("💥 Transaction failed for other reason");
+                handleBidError(error);
+              }
+              reject(error);
+            },
           },
-          onError: (error) => {
-            console.error("Failed to place bid:", error);
-            handleBidError(error);
-          },
-        },
-      );
-    } catch (error: any) {
-      console.error("Error preparing bid transaction:", error);
-      toast.error(
-        `Failed to place bid: ${error.message || "Unknown error"}`,
-      );
-    }
+        );
+      } catch (error) {
+        console.error("💥 Error preparing placeBid transaction:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        toast.error(`Failed to place bid: ${errorMessage}`);
+        reject(error);
+      }
+    });
   };
 
   const claimNft = async (auctionId: string, nftType: string) => {
@@ -232,91 +274,170 @@ export const useBidHook = () => {
   };
 
   const claimCreatorProceeds = async (auctionId: string, nftType: string) => {
-    try {
-      // Create a new transaction for claiming creator proceeds
-      const tx = new Transaction();
+    console.log("🎯 === EXECUTING claimCreatorProceeds ===");
+    console.log("Auction ID:", auctionId);
+    console.log("NFT Type:", nftType);
+    console.log("Package ID:", getCurrentPackageId());
+    console.log("Registry ID:", getCurrentAuctionRegistry());
+    console.log("Clock ID:", SYSTEM_CLOCK_ID);
+    
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a new transaction for claiming creator proceeds
+        const tx = new Transaction();
 
-      // Prepare move call arguments
-      const auctionArg = tx.object(auctionId);
-      const registryArg = tx.object(getCurrentAuctionRegistry());
-      const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
+        // Set gas budget for the transaction
+        tx.setGasBudget(10000000); // 0.01 SUI in MIST
 
-      // Call the generic claim_creator_proceeds function with proper type argument
-      tx.moveCall({
-        target: `${getCurrentPackageId()}::auction_house::claim_creator_proceeds`,
-        typeArguments: [nftType], // Pass the NFT type
-        arguments: [
-          auctionArg,
-          registryArg,
-          clockArg,
-        ],
-      });
+        // Validate required parameters
+        if (!auctionId || !nftType) {
+          throw new Error("Missing required parameters: auctionId or nftType");
+        }
 
-      signAndExecuteTransaction(
-        { transaction: tx },
-        {
-          onSuccess: (result) => {
-            console.log("Creator proceeds claimed successfully!", result);
-            toast.success("Creator proceeds claimed successfully!");
+        // Prepare move call arguments
+        const auctionArg = tx.object(auctionId);
+        const registryArg = tx.object(getCurrentAuctionRegistry());
+        const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
 
-            // Log transaction details for debugging
-            console.log("Transaction digest:", result.digest);
+        // Call the generic claim_creator_proceeds function with proper type argument
+        tx.moveCall({
+          target: `${getCurrentPackageId()}::auction_house::claim_creator_proceeds`,
+          typeArguments: [nftType], // Pass the NFT type
+          arguments: [
+            auctionArg,
+            registryArg,
+            clockArg,
+          ],
+        });
+
+        console.log("📝 Transaction prepared successfully");
+        console.log("📝 Transaction details:", {
+          target: `${getCurrentPackageId()}::auction_house::claim_creator_proceeds`,
+          typeArguments: [nftType],
+        });
+
+        console.log("🚀 Calling signAndExecuteTransaction...");
+        console.log("🔄 Wallet popup should appear now - waiting for user to sign...");
+
+        // Execute transaction with proper error handling
+        signAndExecuteTransaction(
+          { transaction: tx },
+          {
+            onSuccess: (result) => {
+              console.log("✅ claimCreatorProceeds SUCCESS:", result);
+              console.log("📋 Transaction digest:", result.digest);
+              console.log("📋 Transaction effects:", result.effects);
+              
+              toast.success("Creator proceeds claimed successfully!");
+              resolve(result);
+            },
+            onError: (error) => {
+              console.error("❌ claimCreatorProceeds FAILED:", error);
+              console.error("❌ Error type:", typeof error);
+              console.error("❌ Error details:", JSON.stringify(error, null, 2));
+              
+              // Check if this is a user rejection
+              const errorMessage = error?.message || error?.toString() || '';
+              if (errorMessage.includes('rejected') || errorMessage.includes('cancelled') || errorMessage.includes('User rejected')) {
+                console.log("🚫 User rejected the transaction in wallet");
+                toast.info("Transaction was cancelled by user");
+              } else {
+                console.log("💥 Transaction failed for other reason");
+                handleBidError(error);
+              }
+              reject(error);
+            },
           },
-          onError: (error) => {
-            console.error("Failed to claim creator proceeds:", error);
-            handleBidError(error);
-          },
-        },
-      );
-    } catch (error: any) {
-      console.error("Error preparing claim creator proceeds transaction:", error);
-      toast.error(
-        `Failed to claim creator proceeds: ${error.message || "Unknown error"}`,
-      );
-    }
+        );
+      } catch (error) {
+        console.error("💥 Error preparing claimCreatorProceeds transaction:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        toast.error(`Failed to claim creator proceeds: ${errorMessage}`);
+        reject(error);
+      }
+    });
   };
 
   const cancelAuction = async (auctionId: string, nftType: string) => {
-    try {
-      // Create a new transaction for canceling auction
-      const tx = new Transaction();
+    console.log("🎯 === EXECUTING cancelAuction ===");
+    console.log("Auction ID:", auctionId);
+    console.log("NFT Type:", nftType);
+    console.log("Package ID:", getCurrentPackageId());
+    console.log("Registry ID:", getCurrentAuctionRegistry());
+    
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a new transaction for canceling auction
+        const tx = new Transaction();
 
-      // Prepare move call arguments
-      const auctionArg = tx.object(auctionId);
-      const registryArg = tx.object(getCurrentAuctionRegistry());
+        // Set gas budget for the transaction
+        tx.setGasBudget(10000000); // 0.01 SUI in MIST
 
-      // Call the generic cancel_auction function with proper type argument
-      tx.moveCall({
-        target: `${getCurrentPackageId()}::auction_house::cancel_auction`,
-        typeArguments: [nftType], // Pass the NFT type
-        arguments: [
-          auctionArg,
-          registryArg,
-        ],
-      });
+        // Validate required parameters
+        if (!auctionId || !nftType) {
+          throw new Error("Missing required parameters: auctionId or nftType");
+        }
 
-      signAndExecuteTransaction(
-        { transaction: tx },
-        {
-          onSuccess: (result) => {
-            console.log("Auction canceled successfully!", result);
-            toast.success("Auction canceled successfully! Your NFT has been returned.");
+        // Prepare move call arguments
+        const auctionArg = tx.object(auctionId);
+        const registryArg = tx.object(getCurrentAuctionRegistry());
 
-            // Log transaction details for debugging
-            console.log("Transaction digest:", result.digest);
+        // Call the generic cancel_auction function with proper type argument
+        tx.moveCall({
+          target: `${getCurrentPackageId()}::auction_house::cancel_auction`,
+          typeArguments: [nftType], // Pass the NFT type
+          arguments: [
+            auctionArg,
+            registryArg,
+          ],
+        });
+
+        console.log("📝 Transaction prepared successfully");
+        console.log("📝 Transaction details:", {
+          target: `${getCurrentPackageId()}::auction_house::cancel_auction`,
+          typeArguments: [nftType],
+        });
+
+        console.log("🚀 Calling signAndExecuteTransaction...");
+        console.log("🔄 Wallet popup should appear now - waiting for user to sign...");
+
+        // Execute transaction with proper error handling
+        signAndExecuteTransaction(
+          { transaction: tx },
+          {
+            onSuccess: (result) => {
+              console.log("✅ cancelAuction SUCCESS:", result);
+              console.log("📋 Transaction digest:", result.digest);
+              console.log("📋 Transaction effects:", result.effects);
+              
+              toast.success("Auction canceled successfully! Your NFT has been returned.");
+              resolve(result);
+            },
+            onError: (error) => {
+              console.error("❌ cancelAuction FAILED:", error);
+              console.error("❌ Error type:", typeof error);
+              console.error("❌ Error details:", JSON.stringify(error, null, 2));
+              
+              // Check if this is a user rejection
+              const errorMessage = error?.message || error?.toString() || '';
+              if (errorMessage.includes('rejected') || errorMessage.includes('cancelled') || errorMessage.includes('User rejected')) {
+                console.log("🚫 User rejected the transaction in wallet");
+                toast.info("Transaction was cancelled by user");
+              } else {
+                console.log("💥 Transaction failed for other reason");
+                handleCancelError(error);
+              }
+              reject(error);
+            },
           },
-          onError: (error) => {
-            console.error("Failed to cancel auction:", error);
-            handleCancelError(error);
-          },
-        },
-      );
-    } catch (error: any) {
-      console.error("Error preparing cancel auction transaction:", error);
-      toast.error(
-        `Failed to cancel auction: ${error.message || "Unknown error"}`,
-      );
-    }
+        );
+      } catch (error) {
+        console.error("💥 Error preparing cancelAuction transaction:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        toast.error(`Failed to cancel auction: ${errorMessage}`);
+        reject(error);
+      }
+    });
   };
 
   return { placeBid, claimNft, claimNftAfterCreatorClaim, claimCreatorProceeds, cancelAuction };
