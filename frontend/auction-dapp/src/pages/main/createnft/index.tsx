@@ -7,10 +7,23 @@ import { Auction } from "../../../types";
 import { useAuctionHook } from "../../../hooks/use-create-auction";
 import suiIcon from "../../../assets/icons/sui-icon.png";
 import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { NFTCollection } from "../../../components/NFTCollection";
+import { NFTMetadata } from "../../../hooks/use-nft-collection";
+import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
+import { Grid3X3, Edit3, Package } from "lucide-react";
+import { toast } from "react-toastify";
+import { getCurrentAuctionRegistry, getCurrentPackageId, getCurrentNetwork } from "../../../contants";
+
 const auctionSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
-  startingBid: z.number().positive("Must be greater than 0"),
+  startingBid: z.number()
+    .min(0.001, "Minimum starting bid is 0.001 SUI")
+    .max(1000000, "Starting bid cannot exceed 1,000,000 SUI")
+    .refine((val) => !isNaN(val) && isFinite(val), {
+      message: "Please enter a valid number"
+    }),
   nftId: z.string().min(1, "NFT ID is required"),
   endTime: z.string().refine((val) => !isNaN(new Date(val).getTime()), {
     message: "Invalid end time",
@@ -20,31 +33,112 @@ const auctionSchema = z.object({
 type AuctionFormType = z.infer<typeof auctionSchema>;
 
 const Index = () => {
+  const currentAccount = useCurrentAccount();
+  const [inputMode, setInputMode] = useState<'collection' | 'manual'>('collection');
+  const [selectedNFT, setSelectedNFT] = useState<NFTMetadata | null>(null);
+
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<AuctionFormType>({
     resolver: zodResolver(auctionSchema),
   });
+
+  const watchedNftId = watch("nftId");
+
   const onSubmit = async (data: AuctionFormType) => {
     const endTimeMs = new Date(data.endTime).getTime();
     console.log("endTimeMs", endTimeMs);
+    
+    // Additional validation for starting bid
+    if (data.startingBid < 0.001) {
+      toast.error("Starting bid must be at least 0.001 SUI");
+      return;
+    }
+    
+    if (data.startingBid > 1000000) {
+      toast.error("Starting bid cannot exceed 1,000,000 SUI");
+      return;
+    }
+    
+    // Check for valid decimal precision (max 9 decimal places for SUI)
+    const bidString = data.startingBid.toString();
+    const decimalPlaces = bidString.includes('.') ? bidString.split('.')[1].length : 0;
+    if (decimalPlaces > 9) {
+      toast.error("Starting bid cannot have more than 9 decimal places");
+      return;
+    }
+    
+    console.log(`Creating auction with starting bid: ${data.startingBid} SUI`);
+    
+    // Use selected NFT metadata if available
     const auction: Auction = {
       title: data.title,
       description: data.description,
       startingBid: data.startingBid,
       nftId: data.nftId,
       endTimeMs: endTimeMs,
+      // Include NFT metadata from collection selection
+      nftName: selectedNFT?.display?.name || selectedNFT?.name,
+      nftDescription: selectedNFT?.display?.description || selectedNFT?.description,
+      nftImageUrl: selectedNFT?.display?.image_url || selectedNFT?.image_url || selectedNFT?.url,
     };
     const result = await createAuction(auction);
     console.log("result", result);
   };
+
   const { mutate: mutateSubmission, isPending } = useMutation({
     mutationFn: onSubmit,
   });
 
   const { createAuction } = useAuctionHook();
+
+  // Handle NFT selection from collection
+  const handleNFTSelect = (nft: NFTMetadata | null) => {
+    setSelectedNFT(nft);
+    if (nft) {
+      setValue("nftId", nft.objectId);
+      // Auto-fill title and description if they're empty
+      const currentTitle = watch("title");
+      const currentDescription = watch("description");
+      
+      if (!currentTitle && (nft.display?.name || nft.name)) {
+        setValue("title", `${nft.display?.name || nft.name} Auction`);
+      }
+      
+      if (!currentDescription && (nft.display?.description || nft.description)) {
+        setValue("description", nft.display?.description || nft.description || "");
+      }
+    } else {
+      setValue("nftId", "");
+    }
+  };
+
+  // Handle manual NFT ID input
+  const handleManualNFTIdChange = (value: string) => {
+    setValue("nftId", value);
+    // Clear selected NFT when manually typing
+    if (selectedNFT && value !== selectedNFT.objectId) {
+      setSelectedNFT(null);
+    }
+  };
+
+  if (!currentAccount) {
+    return (
+      <div className="container py-10 flex flex-col gap-10 md:gap-20">
+        <div className="w-full flex flex-col items-center justify-center gap-8 py-20">
+          <Package className="h-20 w-20 text-gray-300" />
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-2">Wallet Not Connected</h2>
+            <p className="text-gray-600">Please connect your wallet to create an auction</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-10 flex flex-col gap-10 md:gap-20">
@@ -55,11 +149,56 @@ const Index = () => {
               <span className="gradient-text">Create a new</span> Auction
             </p>
             <p className="text-gray-500">
-              Create an action, users place bids and highest bidder gets the
+              Create an auction, users place bids and highest bidder gets the
               NFT!
             </p>
           </div>
         </div>
+
+        {/* NFT Selection Mode Toggle */}
+        <div className="w-full">
+          <div className="flex items-center gap-4 mb-6">
+            <h3 className="text-lg font-semibold text-gray-800">Select Your NFT</h3>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setInputMode('collection')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  inputMode === 'collection'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <Grid3X3 className="h-4 w-4" />
+                Collection
+              </button>
+              <button
+                type="button"
+                onClick={() => setInputMode('manual')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  inputMode === 'manual'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <Edit3 className="h-4 w-4" />
+                Manual Input
+              </button>
+            </div>
+          </div>
+
+          {/* NFT Collection View */}
+          {inputMode === 'collection' && (
+            <div className="mb-8">
+              <NFTCollection
+                onNFTSelect={handleNFTSelect}
+                selectedNFTId={selectedNFT?.objectId}
+                className="border border-gray-200 rounded-xl p-6 bg-gray-50"
+              />
+            </div>
+          )}
+        </div>
+
         <div className="w-full h-fit flex justify-between gap-10">
           <div className="p-5 md:p-10 rounded-xl shadow-xl w-full max-w-[600px] border border-gray-300 lg:min-w-[600px]">
             <form
@@ -69,16 +208,40 @@ const Index = () => {
               }}
               className="w-full flex flex-col gap-6"
             >
+              {/* Manual NFT ID Input (always visible but conditionally styled) */}
               <div className="w-full">
-                <Label.Root htmlFor="nftId">NFT ID</Label.Root>
+                <Label.Root htmlFor="nftId">
+                  NFT ID
+                  {inputMode === 'collection' && selectedNFT && (
+                    <span className="ml-2 text-sm text-green-600 font-medium">
+                      (Selected from collection)
+                    </span>
+                  )}
+                </Label.Root>
                 <input
                   id="nftId"
                   type="text"
                   {...register("nftId")}
-                  className="input-style"
+                  onChange={(e) => handleManualNFTIdChange(e.target.value)}
+                  className={`input-style ${
+                    inputMode === 'collection' && selectedNFT
+                      ? 'bg-green-50 border-green-200'
+                      : ''
+                  }`}
+                  placeholder={
+                    inputMode === 'collection'
+                      ? "Select an NFT from your collection above or enter manually"
+                      : "Enter NFT Object ID (0x...)"
+                  }
+                  readOnly={inputMode === 'collection' && !!selectedNFT}
                 />
                 {errors.nftId && (
                   <p className="text-red-500 text-sm">{errors.nftId.message}</p>
+                )}
+                {inputMode === 'manual' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    You can find the NFT Object ID in your wallet or on the Sui Explorer
+                  </p>
                 )}
               </div>
 
@@ -89,6 +252,7 @@ const Index = () => {
                   type="text"
                   {...register("title")}
                   className="input-style"
+                  placeholder="Enter auction title"
                 />
                 {errors.title && (
                   <p className="text-red-500 text-sm">{errors.title.message}</p>
@@ -101,6 +265,8 @@ const Index = () => {
                   id="description"
                   {...register("description")}
                   className="input-style"
+                  rows={3}
+                  placeholder="Describe your NFT and auction details"
                 />
                 {errors.description && (
                   <p className="text-red-500 text-sm">
@@ -121,31 +287,61 @@ const Index = () => {
                   <input
                     id="startingBid"
                     type="number"
-                    step="0.01"
-                    {...register("startingBid", { valueAsNumber: true })}
+                    step="0.001"
+                    min="0.001"
+                    max="1000000"
+                    {...register("startingBid", { 
+                      valueAsNumber: true,
+                      setValueAs: (value) => {
+                        // Ensure proper decimal handling and prevent scientific notation
+                        const num = parseFloat(value);
+                        return isNaN(num) ? 0 : Math.round(num * 1000000) / 1000000; // Round to 6 decimal places
+                      }
+                    })}
                     className="input-style pl-10"
+                    placeholder="0.1"
+                    onBlur={(e) => {
+                      // Format the value on blur to ensure proper decimal display
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 0.001) {
+                        e.target.value = value.toFixed(Math.min(6, (value.toString().split('.')[1] || '').length));
+                      }
+                    }}
                   />
                 </div>
+                
+                {/* Quick preset buttons */}
+                <div className="flex gap-2 mt-2">
+                  <span className="text-xs text-gray-500 self-center">Quick set:</span>
+                  {[0.1, 0.5, 1, 5, 10].map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => setValue("startingBid", amount)}
+                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border transition-colors"
+                    >
+                      {amount} SUI
+                    </button>
+                  ))}
+                </div>
+                
                 {errors.startingBid && (
                   <p className="text-red-500 text-sm">
                     {errors.startingBid.message}
                   </p>
                 )}
-              </div>
-              {/* <div>
-                <label className="block text-sm font-medium">Start Time</label>
-                <input
-                  type="datetime-local"
-                  {...register("startTime", { required: true })}
-                  onChange={(e) => console.log(e.target.value)}
-                  className="input-style"
-                />
-                {errors.startTime && (
-                  <p className="text-red-500 text-xs">
-                    {errors.startTime.message}
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-xs text-gray-500">
+                    Minimum: 0.001 SUI • Maximum: 1,000,000 SUI
                   </p>
-                )}
-              </div> */}
+                  <p className="text-xs text-blue-600">
+                    {watch("startingBid") && !isNaN(watch("startingBid")) && watch("startingBid") >= 0.001 
+                      ? `≈ ${(watch("startingBid") * 1_000_000_000).toLocaleString()} MIST`
+                      : ""
+                    }
+                  </p>
+                </div>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium">End Time</label>
@@ -161,15 +357,204 @@ const Index = () => {
                     {errors.endTime.message}
                   </p>
                 )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Select when the auction should end
+                </p>
               </div>
 
               <button
                 type="submit"
                 className="colored-btn"
-                disabled={isPending}
+                disabled={isPending || !watchedNftId}
               >
-                {isPending ? "Loading..." : "Create Auction"}
+                {isPending ? "Creating Auction..." : "Create Auction"}
               </button>
+
+              {!watchedNftId && (
+                <p className="text-sm text-gray-500 text-center">
+                  {inputMode === 'collection' 
+                    ? "Select an NFT from your collection to continue"
+                    : "Enter an NFT ID to continue"
+                  }
+                </p>
+              )}
+              
+              {/* NFT Validation Tool in Development */}
+              {import.meta.env.DEV && watchedNftId && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm font-medium text-yellow-800 mb-2">🔍 NFT Network Validation</p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!watchedNftId) return;
+                      
+                      try {
+                        const client = useSuiClient();
+                        const nftObject = await client.getObject({
+                          id: watchedNftId,
+                          options: {
+                            showType: true,
+                            showContent: true,
+                            showDisplay: true,
+                            showOwner: true,
+                          }
+                        });
+
+                        console.log("🔍 NFT Object Details:", nftObject);
+                        
+                        if (nftObject.data) {
+                          console.log("✅ NFT exists on current network");
+                          console.log("🏷️ NFT Type:", nftObject.data.type);
+                          console.log("👤 NFT Owner:", nftObject.data.owner);
+                          console.log("📄 NFT Content:", nftObject.data.content);
+                          console.log("🖼️ NFT Display:", nftObject.data.display);
+                          
+                          // Check if it has store ability
+                          const hasStore = nftObject.data.content && 
+                            'hasPublicTransfer' in nftObject.data.content && 
+                            nftObject.data.content.hasPublicTransfer;
+                          console.log("🔄 Has Store Ability (transferable):", hasStore);
+                          
+                          alert(`NFT Found!\nType: ${nftObject.data.type}\nTransferable: ${hasStore}\nCheck console for full details`);
+                        } else {
+                          console.log("❌ NFT not found on current network");
+                          alert("NFT not found on current network");
+                        }
+                      } catch (error) {
+                        console.error("❌ Error validating NFT:", error);
+                        alert(`Error validating NFT: ${error}`);
+                      }
+                    }}
+                    className="w-full bg-yellow-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-yellow-700 transition-colors"
+                  >
+                    🧪 Test NFT Detection
+                  </button>
+                </div>
+              )}
+
+              {/* Collection Refresh Tool in Development */}
+              {import.meta.env.DEV && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 mb-2">🔄 Collection Debug</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Force refresh the NFT collection
+                      window.location.reload();
+                    }}
+                    className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                  >
+                    🔄 Refresh Collection (with pagination fix)
+                  </button>
+                </div>
+              )}
+
+              {/* Debug information in development */}
+              {import.meta.env.DEV && (
+                <details className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <summary className="cursor-pointer font-medium text-gray-700">
+                     Debug: Form Values & Network Info
+                  </summary>
+                  <div className="mt-2 text-xs text-gray-600 space-y-1">
+                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                      <p><strong>🌐 Network Configuration:</strong></p>
+                      <p>• App Default Network: testnet (from main.tsx)</p>
+                      <p>• Constants Detected Network: {getCurrentNetwork()}</p>
+                      <p>• Available Networks: devnet, testnet, mainnet</p>
+                      <p>• Current Registry: {getCurrentAuctionRegistry()}</p>
+                      <p>• Current Package: {getCurrentPackageId()}</p>
+                      <p><strong>✅ Networks Match:</strong> {getCurrentNetwork() === 'testnet' ? 'YES' : 'NO - This could cause issues!'}</p>
+                    </div>
+                    <p><strong>Starting Bid:</strong> {watch("startingBid")} SUI</p>
+                    <p><strong>MIST Value:</strong> {watch("startingBid") ? (watch("startingBid") * 1_000_000_000).toLocaleString() : "N/A"}</p>
+                    <p><strong>Is Valid Number:</strong> {!isNaN(watch("startingBid")) ? "✅" : "❌"}</p>
+                    <p><strong>Meets Minimum:</strong> {watch("startingBid") >= 0.001 ? "✅" : "❌"}</p>
+                    <p><strong>Under Maximum:</strong> {watch("startingBid") <= 1000000 ? "✅" : "❌"}</p>
+                    <p><strong>NFT ID:</strong> {watch("nftId") || "Not set"}</p>
+                    <p><strong>Form Errors:</strong> {Object.keys(errors).length > 0 ? JSON.stringify(errors, null, 2) : "None"}</p>
+                  </div>
+                </details>
+              )}
+
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setSelectedNFT(null)}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Switch to Manual Input
+                </button>
+              </div>
+              
+              {/* Debug: Test Transaction Creation */}
+              {import.meta.env.DEV && selectedNFT && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const testAuction = {
+                          nftId: selectedNFT.objectId,
+                          title: "Test Auction",
+                          description: "Test Description", 
+                          startingBid: 0.1,
+                          endTimeMs: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
+                          nftName: selectedNFT.name || "Test NFT",
+                          nftDescription: selectedNFT.description || "Test Description",
+                          nftImageUrl: selectedNFT.image_url || "",
+                        };
+                        
+                        console.log("🧪 Testing transaction creation for NFT:", selectedNFT);
+                        
+                        // Import the client to test transaction creation
+                        const { useSuiClient } = await import("@mysten/dapp-kit");
+                        const { Transaction } = await import("@mysten/sui/transactions");
+                        const { getCurrentAuctionRegistry, getCurrentPackageId, SYSTEM_CLOCK_ID } = await import("../../../contants");
+                        
+                        // Create test transaction (but don't execute)
+                        const tx = new Transaction();
+                        
+                        console.log("📋 Test transaction arguments:");
+                        console.log("- NFT Type:", selectedNFT.type);
+                        console.log("- Package ID:", getCurrentPackageId());
+                        console.log("- Registry ID:", getCurrentAuctionRegistry());
+                        console.log("- Starting Bid MIST:", Math.round(testAuction.startingBid * 1_000_000_000));
+                        
+                        // Try to build the transaction
+                        tx.moveCall({
+                          target: `${getCurrentPackageId()}::auction_house::create_auction`,
+                          typeArguments: [selectedNFT.type],
+                          arguments: [
+                            tx.object(getCurrentAuctionRegistry()),
+                            tx.object(testAuction.nftId),
+                            tx.pure.vector("u8", Array.from(new TextEncoder().encode(testAuction.title))),
+                            tx.pure.vector("u8", Array.from(new TextEncoder().encode(testAuction.description))),
+                            tx.pure.u64(Math.round(testAuction.startingBid * 1_000_000_000)),
+                            tx.pure.u64(testAuction.endTimeMs),
+                            tx.pure.vector("u8", Array.from(new TextEncoder().encode(testAuction.nftName))),
+                            tx.pure.vector("u8", Array.from(new TextEncoder().encode(testAuction.nftDescription))),
+                            tx.pure.vector("u8", Array.from(new TextEncoder().encode(testAuction.nftImageUrl))),
+                            tx.object(SYSTEM_CLOCK_ID),
+                          ],
+                        });
+                        
+                        console.log("✅ Transaction created successfully! The issue might be during execution.");
+                        alert("Transaction creation successful! Check console for details.");
+                        
+                      } catch (error) {
+                        console.error("❌ Transaction creation failed:", error);
+                        alert(`Transaction creation failed: ${(error as Error).message || String(error)}`);
+                      }
+                    }}
+                    className="px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded transition-colors"
+                  >
+                    🧪 Test Transaction Creation
+                  </button>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    Debug: Test if transaction can be created without executing
+                  </p>
+                </div>
+              )}
             </form>
           </div>
 

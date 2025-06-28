@@ -1,7 +1,7 @@
-# Sign and Execute Transaction Fix Summary
+# Sign and Execute Transaction Fix Summary + NFT Collection Feature
 
 ## Issue Report
-**Problem**: Sign and execute functionality not working properly for bid and cancel operations, along with previously identified NFT claiming issues.
+**Problem**: Sign and execute functionality not working properly for bid and cancel operations, along with previously identified NFT claiming issues. Additionally, users had to manually enter NFT Object IDs when creating auctions, which was cumbersome and error-prone.
 
 ## Root Cause Analysis
 The issue was in the transaction execution pattern and error handling in the `useSignAndExecuteTransaction` hook usage across multiple functions.
@@ -18,6 +18,124 @@ The issue was in the transaction execution pattern and error handling in the `us
   - `claimNft()` ✅
   - `claimNftAfterCreatorClaim()` ✅
   - `claimCreatorProceeds()` ✅
+
+### 2. **Consistent Error Handling**
+- **Before**: Basic error handling without user rejection detection
+- **After**: Enhanced error handling that distinguishes between:
+  - User rejections (shows info toast)
+  - Technical failures (shows detailed error)
+  - Proper error logging for debugging
+
+### 3. **Gas Budget Management**
+- **Added**: Explicit gas budget of 10,000,000 MIST (0.01 SUI) for all transactions
+- **Benefit**: Prevents gas estimation failures and ensures consistent transaction costs
+
+### 4. **Parameter Validation**
+- **Added**: Comprehensive validation for all required parameters before transaction execution
+- **Benefit**: Prevents failed transactions due to missing or invalid inputs
+
+## 🆕 **NEW FEATURE: NFT Collection Integration**
+
+### **Problem Solved**
+Users previously had to manually copy and paste NFT Object IDs when creating auctions, which was:
+- Time-consuming and error-prone
+- Required external tools to find NFT IDs
+- Poor user experience
+
+### **Solution: Automatic NFT Collection**
+Implemented a comprehensive NFT collection feature that automatically fetches and displays user's NFTs.
+
+#### **New Components Created:**
+
+1. **`useNFTCollection` Hook** (`frontend/auction-dapp/src/hooks/use-nft-collection.ts`)
+   - Automatically fetches all user-owned NFTs
+   - Filters out system objects (coins, admin caps, etc.)
+   - Extracts NFT metadata (name, description, image)
+   - Handles loading states and error management
+   - Provides selection functionality
+
+2. **`NFTCollection` Component** (`frontend/auction-dapp/src/components/NFTCollection.tsx`)
+   - Beautiful grid layout for NFT display
+   - Interactive NFT cards with selection
+   - Image handling with fallbacks
+   - Loading and error states
+   - Responsive design (mobile-friendly)
+
+3. **Collection Page** (`frontend/auction-dapp/src/pages/main/collection/index.tsx`)
+   - Dedicated page to view all user NFTs
+   - Added to navigation menu
+   - Full-featured collection browser
+
+#### **Enhanced Create Auction Page:**
+- **Toggle Mode**: Switch between "Collection" and "Manual Input"
+- **Visual Selection**: Click NFTs to select instead of typing IDs
+- **Auto-fill**: Automatically populates title/description from NFT metadata
+- **Visual Feedback**: Selected NFT is highlighted and shows confirmation
+- **Fallback**: Manual input still available for edge cases
+
+#### **Technical Features:**
+- **Smart NFT Detection**: Filters out system objects, coins, and admin capabilities
+- **Metadata Extraction**: Supports multiple NFT metadata formats
+- **Image Handling**: Graceful fallbacks for missing images
+- **Type Safety**: Full TypeScript support with proper interfaces
+- **Performance**: Efficient caching and loading states
+- **Responsive**: Works on all device sizes
+
+#### **User Experience Improvements:**
+- **No More Copy/Paste**: Users can select NFTs visually
+- **Rich Previews**: See NFT images, names, and descriptions
+- **Instant Feedback**: Real-time selection and validation
+- **Error Prevention**: Can't select invalid or non-existent NFTs
+- **Mobile Friendly**: Touch-optimized interface
+
+#### **Files Modified/Created:**
+- ✅ `frontend/auction-dapp/src/hooks/use-nft-collection.ts` (NEW)
+- ✅ `frontend/auction-dapp/src/components/NFTCollection.tsx` (NEW)
+- ✅ `frontend/auction-dapp/src/pages/main/collection/index.tsx` (NEW)
+- ✅ `frontend/auction-dapp/src/pages/main/createnft/index.tsx` (ENHANCED)
+- ✅ `frontend/auction-dapp/src/components/Navigation.tsx` (UPDATED)
+- ✅ `frontend/auction-dapp/src/routers/routes.tsx` (UPDATED)
+- ✅ `frontend/auction-dapp/src/styles/index.css` (UPDATED)
+
+## Testing Status
+- ✅ **Bid Functionality**: Fixed and tested
+- ✅ **Cancel Functionality**: Fixed and tested  
+- ✅ **Claim Functionality**: Previously fixed and working
+- ✅ **NFT Collection**: Implemented and ready for testing
+- ✅ **Create Auction**: Enhanced with collection integration
+
+## Next Steps
+1. Test the new collection feature with real NFTs
+2. Monitor transaction success rates
+3. Gather user feedback on the new UX
+4. Consider adding NFT filtering/sorting options
+5. Potential future enhancement: NFT preview in auction cards
+
+## Benefits Summary
+1. **Reliability**: All transaction functions now use consistent, reliable patterns
+2. **User Experience**: Visual NFT selection eliminates manual ID entry
+3. **Error Handling**: Clear feedback for all transaction states
+4. **Mobile Support**: Responsive design works on all devices
+5. **Developer Experience**: Type-safe, well-documented code
+6. **Future-Proof**: Extensible architecture for additional features
+
+## Network Configuration Fix (Latest)
+
+**Issue**: "Package object does not exist" error when creating auctions
+**Root Cause**: Network mismatch between dApp configuration and constants
+- dApp configured to use `testnet` (in main.tsx: `defaultNetwork="testnet"`)
+- Constants defaulting to `devnet` when running locally
+- Devnet package ID doesn't exist on testnet network
+
+**Fix Applied**:
+1. **Updated Network Detection Logic**: Modified `getCurrentNetwork()` in `contants.ts` to default to `testnet` instead of `devnet`
+2. **Enhanced Debug Panel**: Added network configuration display showing current detected network and package IDs
+3. **Verified Package Existence**: Confirmed testnet package ID and auction registry exist and are properly configured
+
+**Technical Details**:
+- Testnet Package ID: `0xb73279f99fa432eb9500a9dbdb0deb87eef699df0a259f8186658ea0fb5c47c7` ✅ Verified
+- Testnet Registry ID: `0xc0440ba4b8e60eb58ac3a195abca8c2ee55bde113ffa832b6fe563f12815e941` ✅ Verified
+- Network detection now prioritizes testnet to match dApp configuration
 
 ```typescript
 // OLD PATTERN

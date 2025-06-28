@@ -15,7 +15,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Theme appearance="light">
       <QueryClientProvider client={queryClient}>
-        <SuiClientProvider networks={networkConfig} defaultNetwork="devnet">
+        <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
           <WalletProvider
             autoConnect
             slushWallet={{

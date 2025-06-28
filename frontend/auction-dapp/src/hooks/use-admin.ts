@@ -28,8 +28,6 @@ export const useAdminHook = () => {
     }
 
     try {
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
       // Find the user's AuctionHouseCap objects
       const ownedObjects = await client.getOwnedObjects({
         owner: currentAccount.address,
@@ -165,8 +163,6 @@ export const useAdminHook = () => {
   const getRegistryFeeInfo = async () => {
     console.log("=== getRegistryFeeInfo called ===");
     try {
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
       console.log("Fetching registry fee info from:", getCurrentAuctionRegistry());
       
       // Call the view function to get registry fee info (still in auction_house module)

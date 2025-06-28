@@ -39,6 +39,10 @@ export function Navigation() {
                   route: "/create",
                 },
                 {
+                  title: "Collection",
+                  route: "/collection",
+                },
+                {
                   title: "Admin",
                   route: "/admin",
                 },
@@ -111,6 +115,10 @@ export function Navigation() {
                 {
                   title: "Create",
                   route: "/create",
+                },
+                {
+                  title: "Collection",
+                  route: "/collection",
                 },
                 {
                   title: "Admin",
