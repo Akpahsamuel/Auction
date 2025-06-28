@@ -11,11 +11,17 @@ import { networkConfig } from "./networkConfig.ts";
 
 const queryClient = new QueryClient();
 
+// Get the current network from localStorage or default to testnet
+const getCurrentNetwork = () => {
+  const savedNetwork = localStorage.getItem('sui-auction-dapp-network');
+  return savedNetwork || 'testnet';
+};
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Theme appearance="light">
       <QueryClientProvider client={queryClient}>
-        <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
+        <SuiClientProvider networks={networkConfig} defaultNetwork={getCurrentNetwork()}>
           <WalletProvider
             autoConnect
             slushWallet={{

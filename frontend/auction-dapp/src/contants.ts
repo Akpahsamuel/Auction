@@ -1,3 +1,5 @@
+import { NETWORK_CONFIGS, SuiNetwork } from './hooks/use-network-selection';
+
 // Package IDs for different networks
 export const TESTNET_PACKAGE_ID = "0xb73279f99fa432eb9500a9dbdb0deb87eef699df0a259f8186658ea0fb5c47c7";
 export const DEVNET_PACKAGE_ID =
@@ -27,58 +29,42 @@ export const DEVNET_AUCTION_REGISTRY_ID =
   "0xd09cea9f4064a4fd0a2b1d6c4c39eb570a5861498bc6b9823348fe199e298411"; // Fixed devnet registry ID
 export const MAINNET_AUCTION_REGISTRY_ID = "0x0"; // Replace with actual mainnet registry ID when deploying
 
-// Network configuration helper
-export const getNetworkConfig = (network: 'testnet' | 'devnet' | 'mainnet') => {
-  switch (network) {
-    case 'testnet':
-      return {
-        packageId: TESTNET_PACKAGE_ID,
-        adminRegistry: TESTNET_ADMIN_REGISTRY,
-        auctionHistory: TESTNET_AUCTION_HISTORY,
-        auctionRegistry: TESTNET_AUCTION_REGISTRY_ID,
-      };
-    case 'devnet':
-      return {
-        packageId: DEVNET_PACKAGE_ID,
-        adminRegistry: DEVNET_ADMIN_REGISTRY,
-        auctionHistory: DEVNET_AUCTION_HISTORY,
-        auctionRegistry: DEVNET_AUCTION_REGISTRY_ID,
-      };
-    case 'mainnet':
-      return {
-        packageId: MAINNET_PACKAGE_ID,
-        adminRegistry: MAINNET_ADMIN_REGISTRY,
-        auctionHistory: MAINNET_AUCTION_HISTORY,
-        auctionRegistry: MAINNET_AUCTION_REGISTRY_ID,
-      };
-    default:
-      throw new Error(`Unsupported network: ${network}`);
-  }
+// Get current network from localStorage or default to testnet
+const getCurrentNetwork = (): SuiNetwork => {
+  const savedNetwork = localStorage.getItem('sui-auction-dapp-network');
+  return (savedNetwork && savedNetwork in NETWORK_CONFIGS) ? savedNetwork as SuiNetwork : 'testnet';
 };
 
-// Environment-based network detection
-export const getCurrentNetwork = (): 'testnet' | 'devnet' | 'mainnet' => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    
-    // Check hostname patterns for network detection
-    if (hostname.includes('devnet') || hostname.includes('dev')) {
-      return 'devnet';
-    } else if (hostname.includes('mainnet') || hostname.includes('main') || hostname.includes('app.')) {
-      return 'mainnet';
-    }
-  }
-  
-  // Default to testnet to match the dApp configuration (defaultNetwork="testnet" in main.tsx)
-  return 'testnet';
+// Get current network configuration
+const getCurrentNetworkConfig = () => {
+  const network = getCurrentNetwork();
+  return NETWORK_CONFIGS[network];
 };
 
-// Current network configuration
-export const CURRENT_NETWORK = getCurrentNetwork();
-export const CURRENT_CONFIG = getNetworkConfig(CURRENT_NETWORK);
+// Export functions that get values from current network config
+export const getCurrentPackageId = (): string => {
+  return getCurrentNetworkConfig().packageId;
+};
 
-// Helper functions for easier access to current network objects
-export const getCurrentAuctionRegistry = () => CURRENT_CONFIG.auctionRegistry;
-export const getCurrentPackageId = () => CURRENT_CONFIG.packageId;
-export const getCurrentAdminRegistry = () => CURRENT_CONFIG.adminRegistry;
-export const getCurrentAuctionHistory = () => CURRENT_CONFIG.auctionHistory;
+export const getCurrentAuctionRegistry = (): string => {
+  return getCurrentNetworkConfig().auctionRegistry;
+};
+
+export const getCurrentAdminRegistry = (): string => {
+  return getCurrentNetworkConfig().adminRegistry;
+};
+
+export const getCurrentRpcUrl = (): string => {
+  return getCurrentNetworkConfig().rpcUrl;
+};
+
+export const getCurrentExplorerUrl = (): string => {
+  return getCurrentNetworkConfig().explorerUrl;
+};
+
+export const getCurrentFaucetUrl = (): string | undefined => {
+  return getCurrentNetworkConfig().faucetUrl;
+};
+
+// Export the network functions for backward compatibility
+export { getCurrentNetwork, getCurrentNetworkConfig };
