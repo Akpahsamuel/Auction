@@ -1,9 +1,10 @@
+import { useState, useEffect } from "react";
 import { Transaction } from "@mysten/sui/transactions";
 import { getCurrentAuctionRegistry, getCurrentPackageId, getCurrentAdminRegistry } from "../contants";
 import { useSignAndExecuteTransaction, useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
-import { SuiClient, getFullnodeUrl, SuiObjectData } from "@mysten/sui/client";
+import { SuiObjectData } from "@mysten/sui/client";
 import { toast } from "react-toastify";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 // Define the AdminRegistryStats interface
 export interface AdminRegistryStats {
@@ -28,8 +29,6 @@ export const useAdminHook = () => {
     }
 
     try {
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
       // Find the user's AuctionHouseCap objects
       const ownedObjects = await client.getOwnedObjects({
         owner: currentAccount.address,
@@ -165,8 +164,6 @@ export const useAdminHook = () => {
   const getRegistryFeeInfo = async () => {
     console.log("=== getRegistryFeeInfo called ===");
     try {
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
       console.log("Fetching registry fee info from:", getCurrentAuctionRegistry());
       
       // Call the view function to get registry fee info (still in auction_house module)

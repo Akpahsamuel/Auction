@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { SuiClient, getFullnodeUrl, SuiObjectData } from "@mysten/sui/client";
+import { SuiObjectData } from "@mysten/sui/client";
+import { useSuiClient } from "@mysten/dapp-kit";
 import { getCurrentPackageId, getCurrentAuctionRegistry } from "../contants";
 import { Transaction } from "@mysten/sui/transactions";
 
@@ -38,6 +39,7 @@ export interface BidderInfo {
 }
 
 export const useAuctionHistory = () => {
+  const client = useSuiClient(); // Use the same client as the dApp configuration
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,8 +48,6 @@ export const useAuctionHistory = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
       
       // First, get the registry object to extract the auction_histories table ID
       const registryObjectResponse = await client.getObject({
@@ -147,7 +147,7 @@ export const useAuctionHistory = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [client]);
 
   // Get auction history by object ID
   const getAuctionHistoryById = useCallback(async (historyId: string): Promise<AuctionHistoryData | null> => {
@@ -155,17 +155,16 @@ export const useAuctionHistory = () => {
       setLoading(true);
       setError(null);
       
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
       const response = await client.getObject({
         id: historyId,
         options: {
           showContent: true,
           showType: true,
-        }
+        },
       });
 
-      if (!response.data?.content || !("fields" in response.data.content)) {
+      if (!response.data?.content || response.data.content.dataType !== "moveObject") {
+        console.log("No auction history found or invalid content");
         return null;
       }
 
@@ -194,18 +193,16 @@ export const useAuctionHistory = () => {
       };
     } catch (err) {
       console.error("Error fetching auction history by ID:", err);
-      setError("Failed to fetch auction history details");
+      setError(err instanceof Error ? err.message : "Unknown error");
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [client]);
 
   // Get bid history from auction history
   const getAuctionHistoryBids = useCallback(async (historyId: string): Promise<BidEntry[]> => {
     try {
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
       const result = await client.devInspectTransactionBlock({
         transactionBlock: (() => {
           const tx = new Transaction();
@@ -226,21 +223,19 @@ export const useAuctionHistory = () => {
       console.error("Error fetching bid history:", err);
       return [];
     }
-  }, []);
+  }, [client]);
 
   // Get bidder info from auction history
   const getAuctionHistoryBidderInfo = useCallback(async (historyId: string, bidderAddress: string): Promise<BidderInfo | null> => {
     try {
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
       const result = await client.devInspectTransactionBlock({
         transactionBlock: (() => {
           const tx = new Transaction();
           tx.moveCall({
-            target: `${getCurrentPackageId()}::auct::get_history_bidder_info`,
+            target: `${getCurrentPackageId()}::auct::get_auction_history_bidder_info`,
             arguments: [
               tx.object(historyId),
-              tx.pure.address(bidderAddress)
+              tx.pure.address(bidderAddress),
             ],
           });
           return tx;
@@ -263,13 +258,11 @@ export const useAuctionHistory = () => {
       console.error("Error fetching bidder info:", err);
       return null;
     }
-  }, []);
+  }, [client]);
 
   // Get registry statistics including completed auction count
-  const getRegistryStats = useCallback(async () => {
+  const getRegistryStats = useCallback(async (): Promise<{ totalAuctions: number; completedAuctions: number; feeBalance: number; treasuryAddress: string } | null> => {
     try {
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-      
       const result = await client.devInspectTransactionBlock({
         transactionBlock: (() => {
           const tx = new Transaction();
@@ -299,7 +292,7 @@ export const useAuctionHistory = () => {
       console.error("Error fetching registry stats:", err);
       return null;
     }
-  }, []);
+  }, [client]);
 
   return {
     getAllAuctionHistory,

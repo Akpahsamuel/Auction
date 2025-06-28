@@ -1,20 +1,17 @@
 import { Transaction } from "@mysten/sui/transactions";
 import { Auction } from "../types";
 import { getCurrentAuctionRegistry, getCurrentPackageId, SYSTEM_CLOCK_ID } from "../contants";
-import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { useSignAndExecuteTransaction, useSuiClient } from "@mysten/dapp-kit";
 import { toast } from "react-toastify";
 
 export const useAuctionHook = () => {
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const client = useSuiClient(); // Use the same client as the dApp configuration
 
   const createAuction = async (auction: Auction) => {
     try {
       // Create a new transaction for each auction creation
       const tx = new Transaction();
-
-      // Initialize Sui client for devnet
-      const client = new SuiClient({ url: getFullnodeUrl("devnet") });
 
       // Get the NFT object to determine its type
       const nftObject = await client.getObject({
@@ -69,9 +66,110 @@ export const useAuctionHook = () => {
 
       // Convert starting bid from SUI to MIST (1 SUI = 1,000,000,000 MIST)
       // This allows decimal starting bids like 1.5 SUI = 1,500,000,000 MIST
-      const startingBidMist = Math.floor(auction.startingBid * 1_000_000_000);
+      // Use more precise conversion to handle floating point precision issues
+      const startingBidMist = Math.round(auction.startingBid * 1_000_000_000);
+      
+      // Validate the conversion
+      if (startingBidMist < 1_000_000) { // Less than 0.001 SUI in MIST
+        throw new Error("Starting bid is too small. Minimum is 0.001 SUI");
+      }
+      
+      if (startingBidMist > 1_000_000_000_000_000) { // More than 1,000,000 SUI in MIST
+        throw new Error("Starting bid is too large. Maximum is 1,000,000 SUI");
+      }
+      
+      // Check for overflow in u64 (max value is 18,446,744,073,709,551,615)
+      if (startingBidMist > Number.MAX_SAFE_INTEGER) {
+        throw new Error("Starting bid value exceeds safe integer limits");
+      }
+
+      // Add detailed debugging for the transaction parameters
+      console.log("=== TRANSACTION DEBUG INFO ===");
+      console.log("Package ID:", getCurrentPackageId());
+      console.log("Registry ID:", getCurrentAuctionRegistry());
+      console.log("NFT ID:", auction.nftId);
+      console.log("NFT Type:", nftType);
+      console.log("NFT Type Details:", {
+        fullType: nftType,
+        isGeneric: nftType.includes("<"),
+        hasPackageId: nftType.includes("::"),
+        typeStructure: nftType.split("::"),
+      });
+      console.log("Starting Bid (SUI):", auction.startingBid);
+      console.log("Starting Bid (MIST):", startingBidMist);
+      console.log("End Time (MS):", auction.endTimeMs);
+      console.log("Title length:", auction.title.length);
+      console.log("Description length:", auction.description.length);
+      console.log("NFT Name length:", nftName.length);
+      console.log("NFT Description length:", nftDescription.length);
+      console.log("NFT Image URL length:", nftImageUrl.length);
+      console.log("System Clock ID:", SYSTEM_CLOCK_ID);
+      console.log("==============================");
+
+      // Validate all required parameters before creating transaction
+      if (!getCurrentPackageId()) {
+        throw new Error("Package ID is not set");
+      }
+      if (!getCurrentAuctionRegistry()) {
+        throw new Error("Auction registry ID is not set");
+      }
+      if (!nftType) {
+        throw new Error("NFT type could not be determined");
+      }
+      if (!auction.title || auction.title.trim().length === 0) {
+        throw new Error("Auction title is required");
+      }
+      if (!auction.description || auction.description.trim().length === 0) {
+        throw new Error("Auction description is required");
+      }
+      if (auction.endTimeMs <= Date.now()) {
+        throw new Error("Auction end time must be in the future");
+      }
 
       console.log(`Creating auction with starting bid: ${auction.startingBid} SUI (${startingBidMist} MIST)`);
+      console.log(`Validation: Min MIST: 1,000,000, Actual: ${startingBidMist}, Max: 1,000,000,000,000,000`);
+
+      // Validate and potentially fix the NFT type format
+      console.log("Raw NFT Type from object:", nftType);
+      
+      // Common NFT type validation patterns
+      const isValidNFTType = (type: string): boolean => {
+        // Must contain package address and module
+        if (!type.includes("::")) {
+          return false;
+        }
+        
+        // Must have at least 3 parts: package::module::struct
+        const parts = type.split("::");
+        if (parts.length < 3) {
+          return false;
+        }
+        
+        // Package address should be a valid hex string
+        const packageAddress = parts[0];
+        if (!packageAddress.startsWith("0x") || packageAddress.length < 3) {
+          return false;
+        }
+        
+        return true;
+      };
+      
+      if (!isValidNFTType(nftType)) {
+        throw new Error(`Invalid NFT type format: ${nftType}. Expected format: 0xpackage::module::struct`);
+      }
+      
+      // Check if this is a known problematic type
+      const problematicTypes = [
+        "0x2::coin::Coin", // This is a coin, not an NFT
+        "0x2::balance::Balance", // This is a balance, not an NFT
+        "0x2::object::UID", // This is just a UID, not an NFT
+      ];
+      
+      if (problematicTypes.some(badType => nftType.startsWith(badType))) {
+        throw new Error(`Object type ${nftType} is not a valid NFT type. Please select an actual NFT object.`);
+      }
+      
+      console.log("✅ NFT type validation passed:", nftType);
 
       // Prepare move call arguments
       const registryArg = tx.object(getCurrentAuctionRegistry());
@@ -187,7 +285,6 @@ export const useAuctionHook = () => {
   // };
 
   const getAllAuctionsById = async () => {
-    const client = new SuiClient({ url: getFullnodeUrl("devnet") });
     // verifyRegistry();
     try {
       const registryObjectResponse = await client.getObject({
@@ -262,7 +359,6 @@ export const useAuctionHook = () => {
   };
 
   const getAuctionDetailById = async (id: string) => {
-    const client = new SuiClient({ url: getFullnodeUrl("devnet") });
     try {
       // First, try to fetch the auction as an active auction
       const response = await client.getObject({
@@ -370,7 +466,6 @@ export const useAuctionHook = () => {
   };
 
   const getAllAuctionHistories = async () => {
-    const client = new SuiClient({ url: getFullnodeUrl("devnet") });
     try {
       const registryObjectResponse = await client.getObject({
         id: getCurrentAuctionRegistry(),
@@ -439,7 +534,6 @@ export const useAuctionHook = () => {
   };
 
   const getAuctionHistoryById = async (id: string) => {
-    const client = new SuiClient({ url: getFullnodeUrl("devnet") });
     try {
       const response = await client.getObject({
         id: id,
