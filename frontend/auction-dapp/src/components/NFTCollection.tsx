@@ -242,18 +242,6 @@ export const NFTCollection: React.FC<NFTCollectionProps> = ({
           />
         ))}
       </div>
-
-      {/* Debug Info (only in development) */}
-      {import.meta.env.DEV && selectedNFT && (
-        <details className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <summary className="cursor-pointer font-medium text-gray-700">
-            Debug: Selected NFT Details
-          </summary>
-          <pre className="mt-2 text-xs text-gray-600 overflow-auto">
-            {JSON.stringify(selectedNFT, null, 2)}
-          </pre>
-        </details>
-      )}
     </div>
   );
 }; 
