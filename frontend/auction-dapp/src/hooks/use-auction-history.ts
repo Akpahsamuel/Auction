@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { SuiClient, getFullnodeUrl, SuiObjectData } from "@mysten/sui/client";
+import { SuiObjectData } from "@mysten/sui/client";
 import { useSuiClient } from "@mysten/dapp-kit";
 import { getCurrentPackageId, getCurrentAuctionRegistry } from "../contants";
 import { Transaction } from "@mysten/sui/transactions";

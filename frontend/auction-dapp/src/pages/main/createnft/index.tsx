@@ -10,7 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { NFTCollection } from "../../../components/NFTCollection";
 import { NFTMetadata } from "../../../hooks/use-nft-collection";
-import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 import { Grid3X3, Edit3, Package } from "lucide-react";
 import { toast } from "react-toastify";
 
