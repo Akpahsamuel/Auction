@@ -44,7 +44,6 @@ export const useNFTCollection = () => {
     const metadata: NFTMetadata = {
       objectId: obj.objectId,
       type: obj.type,
-      raw: obj,
     };
 
     // Try to extract metadata from content fields
@@ -171,8 +170,6 @@ export const useNFTCollection = () => {
         allObjects.push(...ownedObjectsResponse.data);
         cursor = ownedObjectsResponse.nextCursor || null;
         hasNextPage = ownedObjectsResponse.hasNextPage;
-
-        console.log(`📦 Fetched ${ownedObjectsResponse.data.length} objects (page), total so far: ${allObjects.length}`);
       }
 
       console.log("📦 Total owned objects:", allObjects.length);
@@ -185,7 +182,6 @@ export const useNFTCollection = () => {
         .filter((nft): nft is NFTMetadata => nft !== null);
 
       console.log("🎨 Filtered NFTs:", nftObjects.length);
-      console.log("🎨 NFT Details:", nftObjects);
 
       setState(prev => ({ 
         ...prev, 
