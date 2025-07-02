@@ -149,14 +149,16 @@ const AdminPage = () => {
     );
   }
 
-  if (checkingAdmin) {
+  if (!checkIsAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative mb-6">
-            <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
+        <div className="text-center flex flex-col gap-3 items-center">
+          <div className="relative mb-6 flex ">
+            <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600 mx-auto">
+
             <div className="absolute inset-0 flex items-center justify-center">
               <Settings className="h-8 w-8 text-blue-600 animate-pulse" />
+            </div>
             </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying Admin Access</h2>
@@ -169,7 +171,7 @@ const AdminPage = () => {
   if (isAdmin === false) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center">
-        <div className="text-center max-w-lg mx-auto p-8">
+        <div className="text-center max-w-lg mx-auto p-8 flex flex-col gap-4 items-center">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-red-100 to-orange-100 rounded-full mb-6">
             <AlertTriangle className="h-10 w-10 text-red-600" />
           </div>
@@ -178,8 +180,8 @@ const AdminPage = () => {
             You don't have the required admin capabilities to access this panel.
           </p>
           
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
-            <div className="flex items-start space-x-3">
+          <div className="w-full bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+            <div className="flex items-start gap-3">
               <Lock className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
               <div className="text-left">
                 <p className="text-sm font-semibold text-red-800 mb-2">Admin access requires:</p>
@@ -204,7 +206,7 @@ const AdminPage = () => {
                   Checking...
                 </div>
               ) : (
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center gap-2 cursor-pointer">
                   <RefreshCw className="h-5 w-5 mr-2" />
                   Refresh Admin Status
                 </div>

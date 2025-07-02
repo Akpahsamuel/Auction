@@ -211,18 +211,18 @@ export function AuctionCard({
       </div>
 
       {/* Action buttons */}
-      <div className="p-4 pt-0 space-y-2">
-        <div className="flex gap-2">
+      <div className="p-4 pt-0 space-y-2 flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <button 
             onClick={handleViewDetails}
-            className="flex-1 bg-blue-50 text-blue-600 border border-blue-200 py-3 px-4 rounded-xl font-semibold hover:bg-blue-100 transition-all duration-200 flex items-center justify-center gap-2"
+            className="cursor-pointer flex-1 bg-blue-50 text-blue-600 border border-blue-200 py-3 px-4 rounded-xl font-semibold hover:bg-blue-100 transition-all duration-200 flex items-center justify-center gap-2"
           >
             <Eye size={16} />
             <span>View Details</span>
           </button>
           <button 
             onClick={handlePlaceBid}
-            className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-md"
+            className="cursor-pointer flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-md"
           >
             <Gavel size={16} />
             <span>Place Bid</span>
@@ -232,7 +232,7 @@ export function AuctionCard({
         {/* Blockchain explorer link */}
         <button 
           onClick={handleViewOnBlockchain}
-          className="w-full bg-gray-50 text-gray-600 border border-gray-200 py-2 px-3 rounded-lg font-medium hover:bg-gray-100 transition-all duration-200 flex items-center justify-center gap-2 text-sm"
+          className="cursor-pointer w-full bg-gray-50 text-gray-600 border border-gray-200 py-2 px-3 rounded-lg font-medium hover:bg-gray-100 transition-all duration-200 flex items-center justify-center gap-2 text-sm"
           title="View auction on Sui blockchain explorer"
         >
           <ExternalLink size={14} />

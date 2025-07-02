@@ -109,7 +109,7 @@ const AuctionHistoryPage = () => {
       {/* Header */}
       <div className="w-full flex flex-col items-start justify-start gap-8">
         <div className="w-full flex flex-col justify-between md:flex-row gap-6 md:items-center">
-          <div>
+          <div className="flex flex-col gap-2">
             <p className="font-semibold text-3xl">
               <span className="gradient-text">Auction</span> History
             </p>
@@ -164,7 +164,7 @@ const AuctionHistoryPage = () => {
 
         {/* Search and Filter */}
         <div className="w-full flex flex-col-reverse md:flex-row gap-5 items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="w-full flex items-center gap-4">
             <p className="text-sm text-gray-500">
               Showing {filteredAndSortedData.length} of {historyData.length} completed auctions
             </p>

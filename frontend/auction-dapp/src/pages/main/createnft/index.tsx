@@ -155,7 +155,7 @@ const Index = () => {
         </div>
 
         {/* NFT Selection Mode Toggle */}
-        <div className="w-full">
+        <div className="w-full flex flex-col gap-4">
           <div className="flex items-center gap-4 mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Select Your NFT</h3>
             <div className="flex bg-gray-100 rounded-lg p-1">
@@ -208,7 +208,7 @@ const Index = () => {
               className="w-full flex flex-col gap-6"
             >
               {/* Manual NFT ID Input (always visible but conditionally styled) */}
-              <div className="w-full">
+              <div className="flex flex-col gap-2">
                 <Label.Root htmlFor="nftId">
                   NFT ID
                   {inputMode === 'collection' && selectedNFT && (
@@ -244,7 +244,7 @@ const Index = () => {
                 )}
               </div>
 
-              <div className="w-full">
+              <div className="flex flex-col gap-2">
                 <Label.Root htmlFor="title">Title</Label.Root>
                 <input
                   id="title"
@@ -258,7 +258,7 @@ const Index = () => {
                 )}
               </div>
 
-              <div className="w-full">
+               <div className="flex flex-col gap-2">
                 <Label.Root htmlFor="description">Description</Label.Root>
                 <textarea
                   id="description"
@@ -274,14 +274,14 @@ const Index = () => {
                 )}
               </div>
 
-              <div className="w-full">
+               <div className="flex flex-col gap-2">
                 <Label.Root htmlFor="startingBid">
                   Starting Bid (in SUI)
                 </Label.Root>
                 <div className="relative">
                   <img
                     src={suiIcon}
-                    className="w-6 h-6 absolute left-2 top-[20px]"
+                    className="w-6 h-6 absolute left-2 top-[12px]"
                   />
                   <input
                     id="startingBid"
@@ -317,7 +317,7 @@ const Index = () => {
                       key={amount}
                       type="button"
                       onClick={() => setValue("startingBid", amount)}
-                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border transition-colors"
+                      className="cursor-pointer border-none px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border transition-colors"
                     >
                       {amount} SUI
                     </button>
@@ -329,7 +329,7 @@ const Index = () => {
                     {errors.startingBid.message}
                   </p>
                 )}
-                <div className="flex justify-between items-center mt-1">
+                <div className="flex justify-between items-center pt-2">
                   <p className="text-xs text-gray-500">
                     Minimum: 0.001 SUI • Maximum: 1,000,000 SUI
                   </p>
@@ -342,7 +342,7 @@ const Index = () => {
                 </div>
               </div>
 
-              <div>
+              <div className="flex flex-col gap-2">
                 <label className="block text-sm font-medium">End Time</label>
                 <input
                   type="datetime-local"
@@ -356,7 +356,7 @@ const Index = () => {
                     {errors.endTime.message}
                   </p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 pt-2">
                   Select when the auction should end
                 </p>
               </div>

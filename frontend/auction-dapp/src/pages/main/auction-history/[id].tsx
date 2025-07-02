@@ -108,7 +108,7 @@ const AuctionHistoryDetailPage = () => {
   const isSuccessful = historyData.winner !== historyData.creator;
 
   return (
-    <div className="container py-10">
+    <div className="container py-10 flex flex-col gap-8">
       {/* Back Button */}
       <div className="mb-6">
         <Link
@@ -122,9 +122,9 @@ const AuctionHistoryDetailPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column - NFT Info */}
-        <div className="space-y-6">
+        <div className="w-full flex flex-col gap-6">
           {/* NFT Image */}
-          <div className="aspect-square w-full max-w-lg mx-auto overflow-hidden rounded-lg bg-gray-100">
+          <div className="aspect-square w-full mx-auto overflow-hidden rounded-lg bg-gray-100">
             <img
               src={historyData.nftImageUrl || "/api/placeholder/500/500"}
               alt={historyData.nftName}
@@ -137,9 +137,9 @@ const AuctionHistoryDetailPage = () => {
           </div>
 
           {/* NFT Details */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
+          <div className="bg-white rounded-lg p-6 border border-gray-200 flex flex-col gap-3">
             <h2 className="text-xl font-semibold mb-4">NFT Details</h2>
-            <div className="space-y-3">
+            <div className="flex flex-col gap-2">
               <div>
                 <label className="text-sm text-gray-500">Name</label>
                 <p className="font-medium">{historyData.nftName}</p>
@@ -154,11 +154,11 @@ const AuctionHistoryDetailPage = () => {
               </div>
               <div>
                 <label className="text-sm text-gray-500">NFT ID</label>
-                <div className="flex items-center gap-2">
-                  <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                <div className="w-fit flex items-center gap-2 bg-gray-100 cursor-pointer px-2 rounded-sm">
+                  <code className="text-sm  px-2 py-1 rounded">
                     {formatAddress(historyData.nftId)}
                   </code>
-                  <Button size="1" variant="ghost">
+                  <Button size="1" variant="ghost" className="cursor-pointer">
                     <ExternalLink className="h-3 w-3" />
                   </Button>
                 </div>
@@ -168,7 +168,7 @@ const AuctionHistoryDetailPage = () => {
         </div>
 
         {/* Right Column - Auction Info */}
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           {/* Auction Title and Status */}
           <div className="bg-white rounded-lg p-6 border border-gray-200">
             <div className="flex items-start justify-between mb-4">
@@ -186,7 +186,7 @@ const AuctionHistoryDetailPage = () => {
           </div>
 
           {/* Price Information */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
+          <div className="bg-white rounded-lg p-6 border border-gray-200 flex flex-col gap-3">
             <h2 className="text-xl font-semibold mb-4">Price Information</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -211,8 +211,8 @@ const AuctionHistoryDetailPage = () => {
           </div>
 
           {/* Bidding Statistics */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">Bidding Statistics</h2>
+          <div className="bg-white rounded-lg p-6 border border-gray-200 flex flex-col gap-4">
+            <h2 className="text-xl font-semibold">Bidding Statistics</h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-3">
                 <Gavel className="h-8 w-8 text-blue-600" />
@@ -232,9 +232,9 @@ const AuctionHistoryDetailPage = () => {
           </div>
 
           {/* Timeline */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
+          <div className="bg-white rounded-lg p-6 border border-gray-200 flex flex-col gap-4">
             <h2 className="text-xl font-semibold mb-4">Timeline</h2>
-            <div className="space-y-4">
+            <div className="flex flex-col gap-2">
               <div className="flex items-start gap-3">
                 <Calendar className="h-5 w-5 text-gray-400 mt-0.5" />
                 <div>
