@@ -46,7 +46,7 @@ export const AuctionHistoryCard: React.FC<AuctionHistoryCardProps> = ({ historyD
       </div>
 
       {/* Card Content */}
-      <div className="p-4">
+      <div className="p-4 flex flex-col gap-3">
         {/* Title and Status */}
         <div className="flex items-start justify-between mb-2">
           <h3 className="text-lg font-semibold text-gray-900 truncate flex-1 mr-2">
@@ -61,7 +61,7 @@ export const AuctionHistoryCard: React.FC<AuctionHistoryCardProps> = ({ historyD
         </p>
 
         {/* Auction Results */}
-        <div className="space-y-2 mb-4">
+        <div className="flex flex-col gap-2 mb-4">
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-500">Starting Bid:</span>
             <span className="text-sm font-medium">{historyData.startingBid.toFixed(2)} SUI</span>
@@ -93,7 +93,7 @@ export const AuctionHistoryCard: React.FC<AuctionHistoryCardProps> = ({ historyD
         )}
 
         {/* Auction Dates */}
-        <div className="space-y-1 text-xs text-gray-500 mb-4">
+        <div className="flex flex-col gap-1 text-xs text-gray-500 mb-4">
           <p>Started: {formatDate(historyData.startTime)}</p>
           <p>Ended: {formatDate(historyData.endTime)}</p>
           <p>Completed: {formatDate(historyData.completionTime)}</p>

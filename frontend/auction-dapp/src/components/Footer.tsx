@@ -5,7 +5,12 @@ const Footer = () => {
   return (
     <div className="border-t border-[#006fee]/20">
       <div className="container py-4 flex flex-col gap-5 md:flex-row justify-between items-center">
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
+          <img
+            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSkg46-HkEO2ygjNfEJTA11Vdx-HLoVDiVk_Q&s"
+            alt=""
+            className="w-8 h-8 rounded-full border border-blue-400 p-1"
+          />
           <Link to="/" className="text-xl font-bold gradient-text">
             Predator
           </Link>

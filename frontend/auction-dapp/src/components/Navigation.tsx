@@ -10,7 +10,7 @@ import { NetworkSelector } from "./NetworkSelector";
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = useLocation();
-  
+
   const navigationItems = [
     {
       title: "Home",
@@ -43,15 +43,23 @@ export function Navigation() {
       <div className="container">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center">
-            <Link to="/" className="text-2xl font-bold gradient-text hover:opacity-80 transition-opacity">
+          <div className="flex items-center gap-2">
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSkg46-HkEO2ygjNfEJTA11Vdx-HLoVDiVk_Q&s"
+              alt=""
+              className="w-8 h-8 rounded-full border border-blue-400 p-1"
+            />
+            <Link
+              to="/"
+              className="text-2xl font-bold gradient-text hover:opacity-80 transition-opacity"
+            >
               Predator
             </Link>
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:block">
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center gap-3">
               {navigationItems.map((nav) => {
                 const isActive = nav.route === pathname.pathname;
                 return (
@@ -60,9 +68,10 @@ export function Navigation() {
                     key={nav.route}
                     className={`
                       relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ease-out
-                      ${isActive 
-                        ? "text-[#006fee] bg-blue-50/80 shadow-sm" 
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-50/80"
+                      ${
+                        isActive
+                          ? "text-[#006fee] bg-blue-50/80 shadow-sm"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-50/80"
                       }
                     `}
                   >
@@ -80,9 +89,13 @@ export function Navigation() {
           <div className="hidden md:flex items-center gap-3">
             {/* Network Selector */}
             <div className="min-w-[180px]">
-              <NetworkSelector showLabel={false} compact={true} className="text-sm" />
+              <NetworkSelector
+                showLabel={false}
+                compact={true}
+                className="text-sm"
+              />
             </div>
-            
+
             <Button
               variant="ghost"
               size="1"
@@ -90,7 +103,7 @@ export function Navigation() {
             >
               <Search className="h-4 w-4 text-slate-600" />
             </Button>
-            
+
             <ConnectButton
               connectText={
                 <span className="flex justify-center gap-2 items-center !text-white !px-4 !py-2">
@@ -134,9 +147,10 @@ export function Navigation() {
                       onClick={() => setIsMenuOpen(false)}
                       className={`
                         block px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200
-                        ${isActive 
-                          ? "text-[#006fee] bg-blue-50 border border-blue-100" 
-                          : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
+                        ${
+                          isActive
+                            ? "text-[#006fee] bg-blue-50 border border-blue-100"
+                            : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
                         }
                       `}
                     >
@@ -150,12 +164,16 @@ export function Navigation() {
                   );
                 })}
               </div>
-              
+
               {/* Mobile Network Selector */}
               <div className="pt-4 border-t border-gray-200/50">
-                <NetworkSelector showLabel={true} compact={false} className="text-sm" />
+                <NetworkSelector
+                  showLabel={true}
+                  compact={false}
+                  className="text-sm"
+                />
               </div>
-              
+
               {/* Mobile Connect Button */}
               <div className="pt-4">
                 <ConnectButton

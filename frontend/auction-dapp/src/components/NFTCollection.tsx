@@ -122,7 +122,7 @@ export const NFTCollection: React.FC<NFTCollectionProps> = ({
     return (
       <div className={`${className}`}>
         <div className="flex items-center justify-center py-12">
-          <div className="text-center">
+          <div className="text-center flex flex-col gap-3 items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading your NFT collection...</p>
           </div>
@@ -160,7 +160,7 @@ export const NFTCollection: React.FC<NFTCollectionProps> = ({
     return (
       <div className={`${className}`}>
         <div className="text-center py-12">
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center gap-3">
             <Package className="h-16 w-16 text-gray-300 mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">No NFTs Found</h3>
             <p className="text-gray-500 mb-4 max-w-md">
@@ -168,7 +168,7 @@ export const NFTCollection: React.FC<NFTCollectionProps> = ({
             </p>
             <button
               onClick={refreshCollection}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
             >
               <RefreshCw className="h-4 w-4" />
               Refresh Collection
@@ -189,7 +189,7 @@ export const NFTCollection: React.FC<NFTCollectionProps> = ({
         </div>
         <button
           onClick={refreshCollection}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
           title="Refresh Collection"
         >
           <RefreshCw className="h-5 w-5" />
