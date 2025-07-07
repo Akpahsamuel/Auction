@@ -245,47 +245,7 @@ export const useAuctionHook = () => {
     }
   };
 
-  // const verifyRegistry = async () => {
-  //   const client = new SuiClient({ url: getFullnodeUrl("devnet") });
-  //   try {
-  //     const registryObject = await client.getObject({
-  //       id: DEVNET_AUCTION_REGISTRY_ID,
-  //       options: { showContent: true, showType: true, showOwner: true },
-  //     });
-
-  //     console.log(
-  //       "Registry Object Data:",
-  //       JSON.stringify(registryObject, null, 2),
-  //     );
-
-  //     if (
-  //       registryObject.data?.content?.dataType === "moveObject" &&
-  //       registryObject.data.content.fields
-  //     ) {
-  //       // Check if the 'auctions' field exists and its type (should be a Table ID)
-  //       const auctionsField = (registryObject.data.content.fields as any)
-  //         .auctions;
-  //       console.log(auctionsField);
-  //       if (auctionsField && typeof auctionsField === "string") {
-  //         console.log("Found 'auctions' field with ID:", auctionsField);
-  //         // Now, try to get dynamic fields from THIS ID, if `auctions` itself is a separate Table object
-  //         // If `auctions` is an ID *of the table itself*, then your parentId should be `auctionsField`
-  //         // If `auctions` is an inline field *containing* the table, then `DEVNET_AUCTION_REGISTRY_ID` is correct.
-  //         // This depends on how your `AuctionRegistry` struct is defined.
-  //         // Most likely, `auctions` is a Table<ID, bool> *within* the AuctionRegistry.
-  //       } else {
-  //         console.log("No 'auctions' field or it's not a direct ID.");
-  //       }
-  //     } else {
-  //       console.log("Registry object content not found or not a Move object.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching registry object:", error);
-  //   }
-  // };
-
   const getAllAuctionsById = async () => {
-    // verifyRegistry();
     try {
       const registryObjectResponse = await client.getObject({
         id: getCurrentAuctionRegistry(),
