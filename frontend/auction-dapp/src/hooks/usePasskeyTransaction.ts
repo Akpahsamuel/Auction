@@ -4,7 +4,7 @@ import { useSuiClient } from "@mysten/dapp-kit";
 import { toast } from "react-toastify";
 
 export const usePasskeyTransaction = () => {
-  const { isAuthenticated, signTransaction } = usePasskeyAuth();
+  const { isAuthenticated, signTransaction, address } = usePasskeyAuth();
   const client = useSuiClient();
 
   const signAndExecuteTransaction = async (
@@ -20,8 +20,18 @@ export const usePasskeyTransaction = () => {
       throw error;
     }
 
+    if (!address) {
+      const error = new Error('Passkey address not available');
+      options?.onError?.(error);
+      throw error;
+    }
+
     try {
       console.log("🔐 Using passkey for transaction signing...");
+      console.log("📧 Sender address:", address);
+      
+      // Set the sender address for the transaction
+      transaction.setSender(address);
       
       // Build the transaction
       const builtTx = await transaction.build({ client });

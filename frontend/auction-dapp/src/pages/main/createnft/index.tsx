@@ -11,7 +11,8 @@ import { useState } from "react";
 import { NFTCollection } from "../../../components/NFTCollection";
 import { NFTMetadata } from "../../../hooks/use-nft-collection";
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Grid3X3, Edit3, Package } from "lucide-react";
+import { usePasskeyAuth } from "../../../hooks/usePasskeyAuth";
+import { Grid3X3, Edit3 } from "lucide-react";
 import { toast } from "react-toastify";
 
 const auctionSchema = z.object({
@@ -33,8 +34,12 @@ type AuctionFormType = z.infer<typeof auctionSchema>;
 
 const Index = () => {
   const currentAccount = useCurrentAccount();
+  const { isAuthenticated: isPasskeyAuthenticated } = usePasskeyAuth();
   const [inputMode, setInputMode] = useState<'collection' | 'manual'>('collection');
   const [selectedNFT, setSelectedNFT] = useState<NFTMetadata | null>(null);
+
+  // Check if user is authenticated with either wallet or passkey
+  const isAuthenticated = !!currentAccount?.address || isPasskeyAuthenticated;
 
   const {
     register,
@@ -125,14 +130,31 @@ const Index = () => {
     }
   };
 
-  if (!currentAccount) {
+  if (!isAuthenticated) {
     return (
       <div className="container py-10 flex flex-col gap-10 md:gap-20">
-        <div className="w-full flex flex-col items-center justify-center gap-8 py-20">
-          <Package className="h-20 w-20 text-gray-300" />
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-2">Wallet Not Connected</h2>
-            <p className="text-gray-600">Please connect your wallet to create an auction</p>
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Create New Auction
+          </h1>
+          <p className="text-lg text-gray-600 mb-8">
+            Please connect your wallet or authenticate with passkey to create an auction.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-md mx-auto">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">
+              Authentication Required
+            </h3>
+            <p className="text-blue-700 mb-4">
+              You need to connect a wallet or authenticate with passkey to create auctions.
+            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-blue-600">
+                • Connect a Sui wallet (Sui Wallet, Suiet, etc.)
+              </p>
+              <p className="text-sm text-blue-600">
+                • Or use passkey authentication (biometric/security key)
+              </p>
+            </div>
           </div>
         </div>
       </div>

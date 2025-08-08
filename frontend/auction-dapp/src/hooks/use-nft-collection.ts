@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
+import { usePasskeyAuth } from "./usePasskeyAuth";
 import { SuiObjectData } from "@mysten/sui/client";
 
 export interface NFTMetadata {
@@ -28,7 +29,11 @@ export interface NFTCollectionState {
 
 export const useNFTCollection = () => {
   const currentAccount = useCurrentAccount();
+  const { address: passkeyAddress } = usePasskeyAuth();
   const client = useSuiClient();
+  
+  // Determine which address to use (wallet or passkey)
+  const userAddress = currentAccount?.address || passkeyAddress;
   
   const [state, setState] = useState<NFTCollectionState>({
     nfts: [],
@@ -139,7 +144,8 @@ export const useNFTCollection = () => {
 
   // Fetch user's NFT collection
   const fetchNFTCollection = useCallback(async () => {
-    if (!currentAccount?.address) {
+    
+    if (!userAddress) {
       setState(prev => ({ ...prev, nfts: [], loading: false, error: null }));
       return;
     }
@@ -147,9 +153,6 @@ export const useNFTCollection = () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      console.log("🎨 === FETCHING USER NFT COLLECTION ===");
-      console.log("User address:", currentAccount.address);
-
       // Get all objects owned by the user with pagination
       let allObjects: any[] = [];
       let cursor: string | null = null;
@@ -157,7 +160,7 @@ export const useNFTCollection = () => {
 
       while (hasNextPage) {
         const ownedObjectsResponse = await client.getOwnedObjects({
-          owner: currentAccount.address,
+          owner: userAddress,
           options: {
             showContent: true,
             showType: true,
@@ -172,16 +175,12 @@ export const useNFTCollection = () => {
         hasNextPage = ownedObjectsResponse.hasNextPage;
       }
 
-      console.log("📦 Total owned objects:", allObjects.length);
-
       // Filter and process NFT-like objects
       const nftObjects = allObjects
         .filter(obj => obj.data && isLikelyNFT(obj.data))
         .map(obj => obj.data!)
         .map(extractNFTMetadata)
         .filter((nft): nft is NFTMetadata => nft !== null);
-
-      console.log("🎨 Filtered NFTs:", nftObjects.length);
 
       setState(prev => ({ 
         ...prev, 
@@ -191,14 +190,13 @@ export const useNFTCollection = () => {
       }));
 
     } catch (error) {
-      console.error("❌ Error fetching NFT collection:", error);
       setState(prev => ({ 
         ...prev, 
         loading: false, 
         error: error instanceof Error ? error.message : "Failed to fetch NFTs" 
       }));
     }
-  }, [currentAccount?.address, client]);
+  }, [userAddress, client]);
 
   // Select an NFT for auction creation
   const selectNFT = useCallback((nft: NFTMetadata | null) => {

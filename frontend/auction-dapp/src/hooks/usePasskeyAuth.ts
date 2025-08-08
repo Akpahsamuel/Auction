@@ -89,29 +89,47 @@ export const usePasskeyAuth = () => {
   };
 
   const signTransaction = async (txBytes: Uint8Array) => {
-    if (!keypair) {
-      // Recover keypair if needed
-      await recoverKeypair();
+    let keypairToUse = keypair;
+    
+    if (!keypairToUse) {
+      try {
+        keypairToUse = await recoverKeypair();
+      } catch (error) {
+        throw new Error('Passkey keypair recovery failed. Please reconnect your passkey.');
+      }
     }
-    if (!keypair) {
-      throw new Error('No passkey keypair available');
+    
+    try {
+      const signature = await keypairToUse.signTransaction(txBytes);
+      return signature;
+    } catch (error) {
+      throw error;
     }
-    return await keypair.signTransaction(txBytes);
   };
 
   const signPersonalMessage = async (message: Uint8Array) => {
-    if (!keypair) {
-      // Recover keypair if needed
-      await recoverKeypair();
+    let keypairToUse = keypair;
+    
+    if (!keypairToUse) {
+      try {
+        keypairToUse = await recoverKeypair();
+      } catch (error) {
+        throw new Error('Passkey keypair recovery failed. Please reconnect your passkey.');
+      }
     }
-    if (!keypair) {
-      throw new Error('No passkey keypair available');
+    
+    try {
+      const signature = await keypairToUse.signPersonalMessage(message);
+      return signature;
+    } catch (error) {
+      throw error;
     }
-    return await keypair.signPersonalMessage(message);
   };
 
-  const recoverKeypair = async () => {
-    if (!address) return;
+  const recoverKeypair = async (): Promise<PasskeyKeypair> => {
+    if (!address) {
+      throw new Error('No address available for keypair recovery');
+    }
 
     try {
       const provider = new BrowserPasskeyProvider('Sui Auction Passkey', {
@@ -128,15 +146,30 @@ export const usePasskeyAuth = () => {
 
       const commonPk = findCommonPublicKey(possiblePks, possiblePks2);
       if (!commonPk) {
-        throw new Error('Could not recover passkey');
+        throw new Error('Could not recover passkey - no common public key found');
       }
 
       const recoveredKeypair = new PasskeyKeypair(commonPk.toRawBytes(), provider);
       setKeypair(recoveredKeypair);
+      return recoveredKeypair;
     } catch (error) {
-      console.error('Failed to recover keypair:', error);
       // If we can't recover the keypair, we should disconnect
       disconnect();
+      throw new Error('Failed to recover passkey keypair. Please reconnect your passkey.');
+    }
+  };
+
+  const validatePasskeyAvailability = async () => {
+    if (!address) {
+      return false;
+    }
+
+    try {
+      // Try to recover the keypair to validate it's still available
+      await recoverKeypair();
+      return !!keypair;
+    } catch (error) {
+      return false;
     }
   };
 
@@ -155,6 +188,7 @@ export const usePasskeyAuth = () => {
     disconnect,
     signTransaction,
     signPersonalMessage,
+    validatePasskeyAvailability,
     keypair,
   };
 };

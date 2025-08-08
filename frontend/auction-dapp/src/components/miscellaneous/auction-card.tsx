@@ -37,12 +37,17 @@ export function AuctionCard({
   const currentAccount = useCurrentAccount();
   const { cancelAuction } = useBidHook();
   const { cancelAuctionWithPasskey } = usePasskeyAuction();
-  const { isAuthenticated: isPasskeyAuthenticated } = usePasskeyAuth();
+  const { isAuthenticated: isPasskeyAuthenticated, address: passkeyAddress } = usePasskeyAuth();
   const [isCanceling, setIsCanceling] = useState(false);
   const navigate = useNavigate();
 
   const isCurrentUserCreator = () => {
-    return currentAccount?.address === uploader;
+    // Check for both wallet and passkey authentication
+    const walletAddress = currentAccount?.address;
+    const passkeyUserAddress = isPasskeyAuthenticated ? passkeyAddress : null;
+    const userAddress = walletAddress || passkeyUserAddress;
+    
+    return userAddress === uploader;
   };
 
   const canCancelAuction = () => {

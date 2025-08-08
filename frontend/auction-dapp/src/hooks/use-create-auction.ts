@@ -2,10 +2,14 @@ import { Transaction } from "@mysten/sui/transactions";
 import { Auction } from "../types";
 import { getCurrentAuctionRegistry, getCurrentPackageId, SYSTEM_CLOCK_ID } from "../contants";
 import { useSignAndExecuteTransaction, useSuiClient } from "@mysten/dapp-kit";
+import { usePasskeyTransaction } from "./usePasskeyTransaction";
+import { usePasskeyAuth } from "./usePasskeyAuth";
 import { toast } from "react-toastify";
 
 export const useAuctionHook = () => {
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const { signAndExecuteTransaction: signAndExecutePasskeyTransaction } = usePasskeyTransaction();
+  const { isAuthenticated: isPasskeyAuthenticated } = usePasskeyAuth();
   const client = useSuiClient(); // Use the same client as the dApp configuration
 
   const createAuction = async (auction: Auction) => {
@@ -216,27 +220,54 @@ export const useAuctionHook = () => {
         ],
       });
 
-      signAndExecuteTransaction(
-        { transaction: tx },
-        {
-          onSuccess: (result) => {
-            console.log("Auction created successfully!", result);
-            toast.success("Auction created successfully!");
+      // Use passkey or wallet transaction signing based on authentication type
+      if (isPasskeyAuthenticated) {
+        // Use passkey transaction signing
+        signAndExecutePasskeyTransaction(
+          tx,
+          {
+            onSuccess: (result) => {
+              console.log("Auction created successfully with passkey!", result);
+              toast.success("Auction created successfully!");
 
-            // Log transaction details for debugging
-            console.log("Transaction digest:", result.digest);
-            
-            // Reload page after successful auction creation
-            setTimeout(() => {
-              window.location.reload();
-            }, 1500);
+              // Log transaction details for debugging
+              console.log("Transaction digest:", result.digest);
+              
+              // Reload page after successful auction creation
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+            },
+            onError: (error) => {
+              console.error("Failed to create auction with passkey:", error);
+              handleTransactionError(error);
+            },
           },
-          onError: (error) => {
-            console.error("Failed to create auction:", error);
-            handleTransactionError(error);
+        );
+      } else {
+        // Use wallet transaction signing
+        signAndExecuteTransaction(
+          { transaction: tx },
+          {
+            onSuccess: (result) => {
+              console.log("Auction created successfully!", result);
+              toast.success("Auction created successfully!");
+
+              // Log transaction details for debugging
+              console.log("Transaction digest:", result.digest);
+              
+              // Reload page after successful auction creation
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+            },
+            onError: (error) => {
+              console.error("Failed to create auction:", error);
+              handleTransactionError(error);
+            },
           },
-        },
-      );
+        );
+      }
     } catch (error: any) {
       console.error("Error preparing transaction:", error);
       toast.error(

@@ -317,7 +317,6 @@ export const usePasskeyBidHook = () => {
         // Prepare move call arguments
         const auctionArg = tx.object(auctionId);
         const registryArg = tx.object(getCurrentAuctionRegistry());
-        const clockArg = tx.object(SYSTEM_CLOCK_ID); // System clock object
 
         // Call the generic cancel_auction function with proper type argument
         tx.moveCall({
@@ -326,7 +325,6 @@ export const usePasskeyBidHook = () => {
           arguments: [
             auctionArg,
             registryArg,
-            clockArg,
           ],
         });
 

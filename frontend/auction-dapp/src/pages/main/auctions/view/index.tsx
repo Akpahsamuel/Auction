@@ -51,7 +51,7 @@ const Index = () => {
     claimCreatorProceedsWithPasskey,
     cancelAuctionWithPasskey,
   } = usePasskeyAuction();
-  const { isAuthenticated: isPasskeyAuthenticated } = usePasskeyAuth();
+  const { isAuthenticated: isPasskeyAuthenticated, address: passkeyAddress } = usePasskeyAuth();
   const currentAccount = useCurrentAccount();
 
   // Determine which transaction functions to use based on authentication type
@@ -271,13 +271,17 @@ const Index = () => {
       return;
     }
 
-    const auction = auctionData.data.content.fields;
-    const userAddress = currentAccount?.address;
+    // Check for both wallet and passkey authentication
+    const walletAddress = currentAccount?.address;
+    const passkeyUserAddress = isPasskeyAuthenticated ? passkeyAddress : null;
+    const userAddress = walletAddress || passkeyUserAddress;
 
     if (!userAddress) {
-      toast.error("Please connect a wallet");
+      toast.error("Please connect a wallet or authenticate with passkey");
       return;
     }
+
+    const auction = auctionData.data.content.fields;
 
     if (userAddress !== auction.creator) {
       toast.error("Only the auction creator can claim proceeds");
@@ -418,20 +422,35 @@ const Index = () => {
   };
 
   const isCurrentUserCreator = () => {
-    if (!currentAccount?.address || !auctionData?.data?.content?.fields)
+    // Check for both wallet and passkey authentication
+    const walletAddress = currentAccount?.address;
+    const passkeyUserAddress = isPasskeyAuthenticated ? passkeyAddress : null;
+    const userAddress = walletAddress || passkeyUserAddress;
+
+    if (!userAddress || !auctionData?.data?.content?.fields) {
       return false;
+    }
+    
     const fields = auctionData.data.content.fields;
-    return currentAccount.address === fields.creator;
+    return userAddress === fields.creator;
   };
 
   const isCurrentUserWinner = () => {
-    if (!currentAccount?.address || !auctionData?.data?.content?.fields)
+    // Check for both wallet and passkey authentication
+    const walletAddress = currentAccount?.address;
+    const passkeyUserAddress = isPasskeyAuthenticated ? passkeyAddress : null;
+    const userAddress = walletAddress || passkeyUserAddress;
+
+    if (!userAddress || !auctionData?.data?.content?.fields) {
       return false;
+    }
+    
     const fields = auctionData.data.content.fields;
 
     // For active auctions, check highest_bidder
     if (fields.highest_bidder) {
-      return currentAccount.address === fields.highest_bidder;
+      const isWinner = userAddress === fields.highest_bidder;
+      return isWinner;
     }
 
     return false;
@@ -464,10 +483,17 @@ const Index = () => {
   };
 
   const canCancelAuction = () => {
-    if (!currentAccount?.address || !auctionData?.data?.content?.fields)
+    // Check for both wallet and passkey authentication
+    const walletAddress = currentAccount?.address;
+    const passkeyUserAddress = isPasskeyAuthenticated ? passkeyAddress : null;
+    const userAddress = walletAddress || passkeyUserAddress;
+
+    if (!userAddress || !auctionData?.data?.content?.fields) {
       return false;
+    }
+    
     const auction = auctionData.data.content.fields;
-    const userIsCreator = currentAccount.address === auction.creator;
+    const userIsCreator = userAddress === auction.creator;
     // Convert bid_count to number to handle different data types from blockchain
     const bidCount = Number(auction.bid_count) || 0;
     const noBids = bidCount === 0;
@@ -480,8 +506,6 @@ const Index = () => {
   const getAuctionStatus = () => {
     if (!auctionData?.data?.content?.fields) return "Unknown";
     const status = auctionData.data.content.fields.status;
-
-    console.log("Raw auction status object:", status);
 
     // Handle numeric enum (most common in Sui)
     if (typeof status === "number") {
@@ -563,21 +587,27 @@ const Index = () => {
       return { canClaim: false, reason: "Missing auction data" };
     }
 
-    if (!currentAccount?.address) {
-      console.log("❌ No wallet connected");
-      return { canClaim: false, reason: "No wallet connected" };
+    // Check for both wallet and passkey authentication
+    const walletAddress = currentAccount?.address;
+    const passkeyUserAddress = isPasskeyAuthenticated ? passkeyAddress : null;
+    const userAddress = walletAddress || passkeyUserAddress;
+
+    if (!userAddress) {
+      console.log("❌ No wallet or passkey connected");
+      return { canClaim: false, reason: "Please connect a wallet or authenticate with passkey" };
     }
 
     const auction = auctionData.data.content.fields;
     const currentTime = Date.now();
     const endTime = parseInt(auction.end_time);
     const bidCount = Number(auction.bid_count) || 0;
-    const userAddress = currentAccount.address;
     const auctionStatus = getAuctionStatus();
 
     console.log("📊 Validation data:", {
       auctionId: id,
       userAddress,
+      isPasskeyUser,
+      isWalletUser,
       creator: auction.creator,
       highestBidder: auction.highest_bidder,
       currentTime,
