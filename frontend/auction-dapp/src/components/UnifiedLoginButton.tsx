@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ConnectModal, useCurrentAccount, useCurrentWallet, useDisconnectWallet } from "@mysten/dapp-kit";
-import { Shield, Wallet, ChevronDown, LogOut, Copy, Check } from 'lucide-react';
+import { Shield, Wallet, ChevronDown, LogOut } from 'lucide-react';
 import { PasskeyConnectButton } from './PasskeyConnectButton';
 import { usePasskeyAuth } from '../hooks/usePasskeyAuth';
 import { toast } from 'react-toastify';
@@ -13,7 +13,7 @@ export const UnifiedLoginButton = () => {
   const [isClosing, setIsClosing] = useState(false);
   
   // Get connection states
-  const { currentWallet, connectionStatus } = useCurrentWallet();
+  const { connectionStatus } = useCurrentWallet();
   const walletAccount = useCurrentAccount();
   const { mutate: disconnectWallet } = useDisconnectWallet();
   const { isAuthenticated: isPasskeyAuthenticated, address: passkeyAddress, disconnect: disconnectPasskey } = usePasskeyAuth();

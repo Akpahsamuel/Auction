@@ -413,46 +413,6 @@ const Index = () => {
     return userIsCreator && noBids && notEnded;
   };
 
-  // Helper function to check if creator has already claimed proceeds
-  const isCreatorAlreadyClaimed = () => {
-    if (!auctionData?.data?.content?.fields) return false;
-    const auction = auctionData.data.content.fields;
-
-    // Move enums in Sui are represented with type and variant fields
-    const status = auction.status;
-
-    console.log("Checking auction status:", status, "Type:", typeof status);
-
-    // Handle multiple possible representations of the Claimed enum
-    // In Move: Active = 0, Ended = 1, Claimed = 2
-
-    if (typeof status === "number") {
-      // Direct numeric representation
-      return status === 2; // Claimed = 2
-    } else if (typeof status === "string") {
-      return status === "Claimed" || status === "2";
-    } else if (typeof status === "object" && status !== null) {
-      // Check for Sui enum format: { "type": "...", "variant": "Claimed", "fields": {} }
-      if (status.variant === "Claimed") {
-        return true;
-      }
-      // Check for alternative object representation like { "Claimed": null } or { "Claimed": {} }
-      if (status.hasOwnProperty("Claimed") || status.Claimed !== undefined) {
-        return true;
-      }
-      // Check for numeric enum representation in object form
-      if (status.type === 2 || status.value === 2) {
-        return true;
-      }
-      // Handle BCS serialized format
-      if (status.$kind === "Claimed" || status.kind === "Claimed") {
-        return true;
-      }
-    }
-
-    return false;
-  };
-
   // NEW: More robust auction status detection
   const getAuctionStatus = () => {
     if (!auctionData?.data?.content?.fields) return "Unknown";
@@ -525,102 +485,10 @@ const Index = () => {
     }
   };
 
-  // Simple debug function to help troubleshoot issues
-  const handleDebugAuction = () => {
-    console.log("=== AUCTION DEBUG INFO ===");
-    console.log("Auction ID:", id);
-    console.log("Full auction data:", auctionData);
-    console.log("Auction fields:", auctionData?.data?.content?.fields);
-    console.log(
-      "Auction status (raw):",
-      auctionData?.data?.content?.fields?.status,
-    );
-    console.log("Auction status (parsed):", getAuctionStatus());
-    console.log("Is in Claimed status:", isAuctionInClaimedStatus());
-    console.log("Creator claimed check (legacy):", isCreatorAlreadyClaimed());
-    console.log("User address:", currentAccount?.address);
-    console.log("User is creator:", isCurrentUserCreator());
-    console.log("User is winner:", isCurrentUserWinner());
-    console.log("Auction ended:", isAuctionEnded());
-    console.log("Can cancel:", canCancelAuction());
-    console.log("NFT Type:", extractNftType(auctionData));
-    console.log("Current time:", Date.now());
-    console.log(
-      "Auction end time:",
-      auctionData?.data?.content?.fields?.end_time,
-    );
-    console.log("Bid count:", auctionData?.data?.content?.fields?.bid_count);
-    console.log(
-      "Current bid:",
-      auctionData?.data?.content?.fields?.current_bid,
-    );
-    console.log(
-      "Highest bidder:",
-      auctionData?.data?.content?.fields?.highest_bidder,
-    );
-    console.log(
-      "Claim function to use:",
-      isAuctionInClaimedStatus() ? "claimNftAfterCreatorClaim" : "claimNft",
-    );
-    console.log("========================");
-  };
-
   const handleViewOnBlockchain = () => {
     // Open SuiScan (Sui blockchain explorer) for the auction object
     const explorerUrl = `https://suiscan.xyz/devnet/object/${id}`;
     window.open(explorerUrl, "_blank", "noopener,noreferrer");
-  };
-
-  // NEW: Comprehensive diagnostic function to understand auction status format
-  const handleAuctionStatusDiagnostic = () => {
-    if (!auctionData?.data?.content?.fields) {
-      console.log("❌ No auction data available");
-      return;
-    }
-
-    const auction = auctionData.data.content.fields;
-    const status = auction.status;
-
-    console.log("🔍 === COMPREHENSIVE AUCTION STATUS DIAGNOSTIC ===");
-    console.log("📊 Raw status value:", status);
-    console.log("📊 Status type:", typeof status);
-    console.log("📊 Status constructor:", status?.constructor?.name);
-    console.log("📊 Status as JSON:", JSON.stringify(status, null, 2));
-
-    if (typeof status === "object" && status !== null) {
-      console.log("📊 Object keys:", Object.keys(status));
-      console.log("📊 Object entries:", Object.entries(status));
-
-      // Check all possible enum representations
-      console.log("🔎 Checking enum representations:");
-      console.log("  - status.variant:", status.variant);
-      console.log("  - status.$kind:", status.$kind);
-      console.log("  - status.kind:", status.kind);
-      console.log("  - status.type:", status.type);
-      console.log("  - status.value:", status.value);
-      console.log("  - status.Active:", status.Active);
-      console.log("  - status.Ended:", status.Ended);
-      console.log("  - status.Claimed:", status.Claimed);
-
-      // Check for numeric properties
-      for (const [key, value] of Object.entries(status)) {
-        console.log(`  - status['${key}']:`, value, `(type: ${typeof value})`);
-      }
-    }
-
-    console.log("✅ Parsed status:", getAuctionStatus());
-    console.log("✅ Is in Claimed status:", isAuctionInClaimedStatus());
-    console.log("✅ Legacy creator claimed check:", isCreatorAlreadyClaimed());
-    console.log(
-      "✅ Which function would be used:",
-      isAuctionInClaimedStatus() ? "claimNftAfterCreatorClaim" : "claimNft",
-    );
-    console.log("=================================");
-
-    // Also show in UI for easier access
-    toast.info(
-      `Status: ${getAuctionStatus()} | Type: ${typeof status} | Function: ${isAuctionInClaimedStatus() ? "claimNftAfterCreatorClaim" : "claimNft"}`,
-    );
   };
 
   // NEW: Comprehensive claim validation
@@ -704,34 +572,6 @@ const Index = () => {
         method: "claimNft",
       };
     }
-  };
-
-  // NEW: Test claim conditions (for debugging)
-  const handleTestClaimConditions = () => {
-    console.log("🧪 === TESTING CLAIM CONDITIONS ===");
-
-    const validation = validateClaimConditions();
-
-    console.log("Test results:", validation);
-
-    // Show results in toast for easy viewing
-    if (validation.canClaim) {
-      toast.success(
-        `✅ Can claim! Method: ${validation.method}. Reason: ${validation.reason}`,
-      );
-    } else {
-      toast.error(`❌ Cannot claim. Reason: ${validation.reason}`);
-    }
-
-    // Also test individual conditions
-    console.log("🔍 Individual condition tests:");
-    console.log("- Auction ended:", isAuctionEnded());
-    console.log("- User is winner:", isCurrentUserWinner());
-    console.log("- User is creator:", isCurrentUserCreator());
-    console.log("- Auction status:", getAuctionStatus());
-    console.log("- In claimed status:", isAuctionInClaimedStatus());
-
-    return validation;
   };
 
   if (loading) {

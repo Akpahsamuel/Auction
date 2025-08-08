@@ -4,7 +4,7 @@ import { useAuctionHook } from './use-create-auction';
 import { toast } from 'react-toastify';
 
 export const usePasskeyAuction = () => {
-  const { isAuthenticated, signTransaction, signPersonalMessage } = usePasskeyAuth();
+  const { isAuthenticated, signPersonalMessage } = usePasskeyAuth();
   const { placeBid, claimNft, claimNftAfterCreatorClaim, claimCreatorProceeds, cancelAuction } = useBidHook();
   const { getAuctionDetailById } = useAuctionHook();
 
