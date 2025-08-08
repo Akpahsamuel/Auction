@@ -17,7 +17,7 @@ interface PasskeyConfig {
 
 const DEFAULT_CONFIG: PasskeyConfig = {
   authenticatorSelection: {
-    authenticatorAttachment: 'cross-platform',
+    authenticatorAttachment: 'platform', // Prefer native device storage
     requireResidentKey: true,
     residentKey: 'required',
     userVerification: 'preferred'
