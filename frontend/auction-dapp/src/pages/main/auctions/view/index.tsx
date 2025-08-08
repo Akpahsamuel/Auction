@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuctionHook } from "../../../../hooks/use-create-auction";
 import { useBidHook } from "../../../../hooks/use-bid";
+import { usePasskeyAuction } from "../../../../hooks/usePasskeyAuction";
 import { useCurrentAccount } from "@mysten/dapp-kit";
+import { usePasskeyAuth } from "../../../../hooks/usePasskeyAuth";
 import {
   Clock,
   Trophy,
@@ -43,7 +45,18 @@ const Index = () => {
     claimCreatorProceeds,
     cancelAuction,
   } = useBidHook();
+  const {
+    placeBidWithPasskey,
+    claimNftWithPasskey,
+    claimCreatorProceedsWithPasskey,
+    cancelAuctionWithPasskey,
+  } = usePasskeyAuction();
+  const { isAuthenticated: isPasskeyAuthenticated } = usePasskeyAuth();
   const currentAccount = useCurrentAccount();
+
+  // Determine which transaction functions to use based on authentication type
+  const isPasskeyUser = isPasskeyAuthenticated;
+  const isWalletUser = !!currentAccount?.address && !isPasskeyUser;
 
   // Manual refresh handler
   const handleManualRefresh = async () => {
@@ -110,7 +123,7 @@ const Index = () => {
     // Validate minimum bid
     const minimumBid = parseFloat(getMinimumBid());
     if (bidValue < minimumBid) {
-      toast.error(`Bid must be at least ${minimumBid} SUI`);
+      toast.error(`Bid must be at least ${minimumBid} SUI (current bid + 0.001 SUI)`);
       return;
     }
 
@@ -130,7 +143,15 @@ const Index = () => {
         throw new Error("Could not determine NFT type for bidding");
       }
 
-      await placeBid(id, bidValue, nftType);
+      // Use passkey or wallet transaction signing based on authentication type
+      if (isPasskeyUser) {
+        await placeBidWithPasskey(id, bidValue, nftType);
+      } else if (isWalletUser) {
+        await placeBid(id, bidValue, nftType);
+      } else {
+        throw new Error("Please connect a wallet or authenticate with passkey");
+      }
+
       setBidAmount("");
 
       // Reload page after successful bid
@@ -180,9 +201,21 @@ const Index = () => {
 
       let result;
       if (validation.method === "claimNftAfterCreatorClaim") {
-        result = await claimNftAfterCreatorClaim(id!, nftType);
+        if (isPasskeyUser) {
+          result = await claimNftWithPasskey(id!, nftType);
+        } else if (isWalletUser) {
+          result = await claimNftAfterCreatorClaim(id!, nftType);
+        } else {
+          throw new Error("Please connect a wallet or authenticate with passkey");
+        }
       } else {
-        result = await claimNft(id!, nftType);
+        if (isPasskeyUser) {
+          result = await claimNftWithPasskey(id!, nftType);
+        } else if (isWalletUser) {
+          result = await claimNft(id!, nftType);
+        } else {
+          throw new Error("Please connect a wallet or authenticate with passkey");
+        }
       }
 
       // Step 4: Success handling
@@ -234,17 +267,20 @@ const Index = () => {
 
   const handleClaimCreatorProceeds = async () => {
     if (!auctionData || !id) {
-      toast.error("Missing auction data for claiming proceeds");
+      toast.error("Missing auction data");
       return;
     }
 
-    if (!isCurrentUserCreator()) {
+    const auction = auctionData.data.content.fields;
+    const userAddress = currentAccount?.address;
+
+    if (!userAddress) {
+      toast.error("Please connect a wallet");
+      return;
+    }
+
+    if (userAddress !== auction.creator) {
       toast.error("Only the auction creator can claim proceeds");
-      return;
-    }
-
-    if (!isAuctionEnded()) {
-      toast.error("Cannot claim proceeds: auction has not ended yet");
       return;
     }
 
@@ -255,18 +291,24 @@ const Index = () => {
         throw new Error("Could not determine NFT type for claiming proceeds");
       }
 
-      await claimCreatorProceeds(id, nftType);
+      // Use passkey or wallet transaction signing based on authentication type
+      if (isPasskeyUser) {
+        await claimCreatorProceedsWithPasskey(id, nftType);
+      } else if (isWalletUser) {
+        await claimCreatorProceeds(id, nftType);
+      } else {
+        throw new Error("Please connect a wallet or authenticate with passkey");
+      }
 
-      // Reload page after successful claim
-      toast.success("Proceeds claimed successfully!");
+      toast.success("Creator proceeds claimed successfully!");
 
       setTimeout(() => {
         window.location.reload();
       }, 1500);
     } catch (error) {
-      console.error("Failed to claim proceeds:", error);
+      console.error("Failed to claim creator proceeds:", error);
       toast.error(
-        `Failed to claim proceeds: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to claim creator proceeds: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     } finally {
       setIsClaiming(false);
@@ -274,11 +316,23 @@ const Index = () => {
   };
 
   const handleCancelAuction = async () => {
-    if (!auctionData || !id) return;
+    if (!auctionData || !id) {
+      toast.error("Missing auction data");
+      return;
+    }
 
-    // Confirm cancellation
+    if (!isCurrentUserCreator()) {
+      toast.error("Only the auction creator can cancel the auction");
+      return;
+    }
+
+    if (isAuctionEnded()) {
+      toast.error("Cannot cancel auction: auction has already ended");
+      return;
+    }
+
     const confirmed = window.confirm(
-      "Are you sure you want to cancel this auction? This action cannot be undone and your NFT will be returned to you.",
+      "Are you sure you want to cancel this auction? This action cannot be undone and your NFT will be returned to you."
     );
 
     if (!confirmed) return;
@@ -286,15 +340,24 @@ const Index = () => {
     setIsCanceling(true);
     try {
       const nftType = extractNftType(auctionData);
-      await cancelAuction(id, nftType);
+      if (!nftType) {
+        throw new Error("Could not determine NFT type for cancellation");
+      }
+
+      // Use passkey or wallet transaction signing based on authentication type
+      if (isPasskeyUser) {
+        await cancelAuctionWithPasskey(id, nftType);
+      } else if (isWalletUser) {
+        await cancelAuction(id, nftType);
+      } else {
+        throw new Error("Please connect a wallet or authenticate with passkey");
+      }
 
       toast.success("Auction cancelled successfully!");
 
-      // Note: After successful cancellation, the auction object is destroyed,
-      // so we redirect the user after a short delay to show the success message
       setTimeout(() => {
-        window.location.href = "/auctions"; // Redirect to auctions list
-      }, 2000);
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error("Failed to cancel auction:", error);
       toast.error(
@@ -388,16 +451,16 @@ const Index = () => {
 
   const getMinimumBid = () => {
     if (!auctionData?.data?.content?.fields) {
-      return "1";
+      return "0.001"; // Minimum starting bid
     }
 
     const currentBidMist = getCurrentBid();
     const currentBidSui = parseFloat(formatSui(currentBidMist));
 
-    // Add minimum increment (0.001 SUI) and round up to next whole SUI
-    const minimumBidSui = Math.ceil(currentBidSui + 0.001);
+    // Add minimum increment (0.001 SUI) to current bid
+    const minimumBidSui = currentBidSui + 0.001;
 
-    return minimumBidSui.toString();
+    return minimumBidSui.toFixed(3);
   };
 
   const canCancelAuction = () => {
@@ -948,7 +1011,7 @@ const Index = () => {
                         onChange={(e) => setBidAmount(e.target.value)}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-0"
                         placeholder={`Minimum: ${getMinimumBid()} SUI`}
-                        step="0.1"
+                        step="0.001"
                         min={getMinimumBid()}
                         disabled={auctionEnded || userIsCreator}
                       />
@@ -961,7 +1024,7 @@ const Index = () => {
                       </div>
                     </div>
                     <p className="text-sm text-gray-500 py-1">
-                      Current minimum bid: {getMinimumBid()} SUI
+                      Minimum bid: {getMinimumBid()} SUI (current bid + 0.001 SUI)
                     </p>
                   </div>
 

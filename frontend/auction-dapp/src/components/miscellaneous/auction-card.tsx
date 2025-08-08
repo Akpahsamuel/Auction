@@ -4,6 +4,9 @@ import suiIcon from "../../assets/icons/sui-icon.png";
 import { useNavigate } from "react-router-dom";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useBidHook } from "../../hooks/use-bid";
+import { usePasskeyAuction } from "../../hooks/usePasskeyAuction";
+import { usePasskeyAuth } from "../../hooks/usePasskeyAuth";
+import { toast } from "react-toastify";
 import { useState } from "react";
 
 export interface AuctionCardType {
@@ -33,6 +36,8 @@ export function AuctionCard({
 }: AuctionCardType) {
   const currentAccount = useCurrentAccount();
   const { cancelAuction } = useBidHook();
+  const { cancelAuctionWithPasskey } = usePasskeyAuction();
+  const { isAuthenticated: isPasskeyAuthenticated } = usePasskeyAuth();
   const [isCanceling, setIsCanceling] = useState(false);
   const navigate = useNavigate();
 
@@ -83,12 +88,21 @@ export function AuctionCard({
 
     setIsCanceling(true);
     try {
-      await cancelAuction(id, nftType);
+      // Use passkey or wallet transaction signing based on authentication type
+      if (isPasskeyAuthenticated) {
+        await cancelAuctionWithPasskey(id, nftType);
+      } else if (currentAccount?.address) {
+        await cancelAuction(id, nftType);
+      } else {
+        throw new Error("Please connect a wallet or authenticate with passkey");
+      }
+      
       if (onCancelSuccess) {
         onCancelSuccess();
       }
     } catch (error) {
       console.error("Failed to cancel auction:", error);
+      toast.error("Failed to cancel auction");
     } finally {
       setIsCanceling(false);
     }
@@ -110,7 +124,7 @@ export function AuctionCard({
     e.preventDefault();
     e.stopPropagation();
     // Open SuiScan (Sui blockchain explorer) for the auction object
-    const explorerUrl = `https://suiscan.xyz/devnet/object/${id}`;
+    const explorerUrl = `https://suiscan.xyz/testnet/object/${id}`;
     window.open(explorerUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -240,24 +254,22 @@ export function AuctionCard({
         </button>
 
         {/* Additional status information */}
-        <div className="text-center">
-          {isCurrentUserCreator() && (
-            <div className="text-xs bg-purple-100 text-purple-700 py-2 px-3 rounded-lg">
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                Your auction {canCancelAuction() && "• Can be cancelled"}
+        <div className="grid grid-cols-2 gap-6">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600 mb-2">
+                    Current Bid
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {current_bid} SUI
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600 mb-2">
+                    Min. Increment
+                  </p>
+                  <p className="text-xl font-semibold text-gray-700">0.001 SUI</p>
+                </div>
               </div>
-            </div>
-          )}
-          {!isCurrentUserCreator() && (
-            <div className="text-xs bg-blue-100 text-blue-700 py-2 px-3 rounded-lg">
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                Active auction • Place your bid now
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
