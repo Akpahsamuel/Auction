@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ConnectButton } from "@mysten/dapp-kit";
-import { Search, Menu, X, Wallet } from "lucide-react";
+import { Search, Menu, X } from "lucide-react";
 import { Button } from "@radix-ui/themes";
 import { NetworkSelector } from "./NetworkSelector";
+import { UnifiedLoginButton } from "./UnifiedLoginButton";
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -104,15 +104,8 @@ export function Navigation() {
               <Search className="h-4 w-4 text-slate-600" />
             </Button>
 
-            <ConnectButton
-              connectText={
-                <span className="flex justify-center gap-2 items-center !text-white !px-4 !py-2">
-                  <Wallet className="h-4 w-4" color="#ffffff" />
-                  Connect Wallet
-                </span>
-              }
-              className="!bg-[#006fee] !rounded-xl !font-semibold cursor-pointer hover:!bg-[#0056cc] transition-all duration-200 shadow-sm"
-            />
+            {/* Unified Login Button */}
+            <UnifiedLoginButton />
           </div>
 
           {/* Mobile Menu Button */}
@@ -174,17 +167,9 @@ export function Navigation() {
                 />
               </div>
 
-              {/* Mobile Connect Button */}
+              {/* Mobile Unified Login Button */}
               <div className="pt-4">
-                <ConnectButton
-                  connectText={
-                    <span className="flex justify-center gap-2 items-center !text-white !px-4 !py-3 w-full">
-                      <Wallet className="h-4 w-4" color="#ffffff" />
-                      Connect Wallet
-                    </span>
-                  }
-                  className="!bg-[#006fee] !rounded-xl !font-semibold cursor-pointer hover:!bg-[#0056cc] transition-all duration-200 shadow-sm w-full"
-                />
+                <UnifiedLoginButton />
               </div>
             </div>
           </div>

@@ -62,7 +62,6 @@ const AdminPage = () => {
     setLoading(true);
     try {
       const registryInfo = await getRegistryFeeInfo();
-      console.log("Raw registry fee info:", registryInfo); // Debug log
       setRegistryFeeInfo(registryInfo);
     } catch (error) {
       console.error("Error fetching fee info:", error);
@@ -140,7 +139,6 @@ const AdminPage = () => {
 
   const formatSui = (suiValue: number) => {
     // The value is already in SUI units from getRegistryFeeInfo, no conversion needed
-    console.log(`Displaying ${suiValue} SUI`); // Debug log
     return suiValue.toFixed(4);
   };
 
